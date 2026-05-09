@@ -38,6 +38,29 @@ py -3.11 -m venv .venv
 .venv\Scripts\pytest
 ```
 
+## Train Classical ML Detector
+
+```powershell
+.venv\Scripts\python -m src.training.train_ml --config configs/ml.yaml
+```
+
+생성 결과:
+
+- `models/tfidf_logistic_regression.joblib`
+- `reports/metrics_summary.csv`
+- `reports/confusion_matrix.csv`
+- `reports/false_positives.csv`
+- `reports/false_negatives.csv`
+- `reports/korean_obfuscation_results.csv`
+- `reports/experiment_report.md`
+
+## Evaluate
+
+```powershell
+.venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode ml --config configs/ml.yaml
+.venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode full --config configs/ml.yaml
+```
+
 ## Run API
 
 ```powershell

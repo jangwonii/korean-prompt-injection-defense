@@ -1,0 +1,19 @@
+seed: 42
+
+data:
+  train_path: data/samples/prompt_injection_samples.csv
+  test_size: 0.3
+  text_column: text
+  label_column: label
+  attack_type_column: attack_type
+
+model:
+  output_path: models/tfidf_logistic_regression.joblib
+  name: tfidf_logistic_regression
+  max_features: 5000
+  ngram_range: [1, 2]
+  class_weight: balanced
+  threshold: 0.45
+
+reports:
+  output_dir: reports
