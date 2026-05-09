@@ -1,0 +1,29 @@
+thresholds:
+  medium: 35
+  high: 65
+  critical: 85
+
+rule_weights:
+  DIRECT_INJECTION: 70
+  SYSTEM_PROMPT_EXTRACTION: 90
+  JAILBREAK: 75
+  POLICY_BYPASS: 80
+  DATA_EXFILTRATION: 85
+  TOOL_MISUSE: 75
+  ROLE_PLAY_ATTACK: 55
+  OBFUSCATED_KOREAN_ATTACK: 65
+  MIXED_LANGUAGE_ATTACK: 55
+  UNKNOWN_SUSPICIOUS: 45
+
+signal_weights:
+  obfuscation_score: 0.25
+  sensitive_target_score: 0.25
+  instruction_override_score: 0.25
+  mixed_language_score: 0.6
+  hard_negative_context_score: -0.35
+
+actions:
+  LOW: ALLOW
+  MEDIUM: WARN
+  HIGH: REWRITE
+  CRITICAL: BLOCK
