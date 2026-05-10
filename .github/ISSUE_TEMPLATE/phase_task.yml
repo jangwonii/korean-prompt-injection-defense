@@ -1,0 +1,31 @@
+name: Phase task
+description: Track one implementation task within a project phase.
+title: "[Phase]: "
+labels: ["type:task"]
+body:
+  - type: input
+    id: phase
+    attributes:
+      label: Phase
+      placeholder: "M1 Baseline Pipeline"
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should this task accomplish?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: What proves this task is complete?
+    validations:
+      required: true
+  - type: textarea
+    id: commands
+    attributes:
+      label: Expected Commands
+      description: Commands that should work after the task is done.
