@@ -10,6 +10,7 @@ from src.data.load_datasets import load_csv_dataset
 from src.evaluation.metrics import compute_binary_metrics, write_confusion_matrix, write_dict_csv
 from src.pipeline.defense_pipeline import DefensePipeline
 from src.pipeline.ml_detector import MLDetector
+from src.pipeline.transformer_detector import TransformerDetector
 
 
 def load_config(path: str | Path) -> dict[str, Any]:
@@ -33,13 +34,21 @@ def evaluate(mode: str, config_path: str | Path) -> dict[str, float | int]:
         detector = MLDetector(config["model"]["output_path"])
         scores = [detector.detect(text).score for text in dataset.texts]
         predictions = [detector.detect(text).prediction for text in dataset.texts]
+    elif mode == "transformer":
+        detector = TransformerDetector(
+            config["model"]["output_dir"],
+            threshold=float(config["model"]["threshold"]),
+            max_length=int(config["model"]["max_length"]),
+        )
+        scores = [detector.detect(text).score for text in dataset.texts]
+        predictions = [detector.detect(text).prediction for text in dataset.texts]
     elif mode == "full":
         pipeline = DefensePipeline("configs/baseline.yaml")
         decisions = [pipeline.detect(text) for text in dataset.texts]
         scores = [decision["risk_score"] / 100 for decision in decisions]
         predictions = [1 if decision["is_injection"] else 0 for decision in decisions]
     else:
-        raise ValueError("mode must be one of: ml, full")
+        raise ValueError("mode must be one of: ml, transformer, full")
 
     metrics = compute_binary_metrics(dataset.labels, predictions)
     metrics_row = {"mode": mode, **metrics}
@@ -75,7 +84,7 @@ def write_errors(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate ML or full defense pipeline.")
-    parser.add_argument("--mode", choices=["ml", "full"], default="full")
+    parser.add_argument("--mode", choices=["ml", "transformer", "full"], default="full")
     parser.add_argument("--config", default="configs/ml.yaml")
     args = parser.parse_args()
     print(evaluate(args.mode, args.config))

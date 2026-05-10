@@ -54,10 +54,29 @@ py -3.11 -m venv .venv
 - `reports/korean_obfuscation_results.csv`
 - `reports/experiment_report.md`
 
+## Train Transformer Detector
+
+```powershell
+.venv\Scripts\python -m src.training.train_transformer --config configs/transformer.yaml
+```
+
+기본 모델은 `xlm-roberta-base`입니다. GPU가 있으면 자동으로 학습 속도가 개선되고, CPU 환경에서는 작은 샘플 검증 또는 외부 GPU/Colab 실행을 권장합니다.
+
+생성 결과:
+
+- `models/xlm-roberta-prompt-injection/`
+- `reports/transformer_metrics_summary.csv`
+- `reports/transformer_confusion_matrix.csv`
+- `reports/transformer_false_positives.csv`
+- `reports/transformer_false_negatives.csv`
+- `reports/transformer_korean_obfuscation_results.csv`
+- `reports/transformer_experiment_report.md`
+
 ## Evaluate
 
 ```powershell
 .venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode ml --config configs/ml.yaml
+.venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode transformer --config configs/transformer.yaml
 .venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode full --config configs/ml.yaml
 ```
 
