@@ -6,6 +6,7 @@ from typing import Any
 
 import yaml
 
+from src.pipeline.ml_detector import MLDetectionResult
 from src.pipeline.rule_detector import RuleDetectionResult
 from src.pipeline.risk_signals import RiskSignalsResult
 
@@ -34,6 +35,7 @@ class RiskPolicy:
         self,
         rule_result: RuleDetectionResult,
         signal_result: RiskSignalsResult,
+        ml_result: MLDetectionResult | None = None,
     ) -> RiskDecision:
         detected_by: list[str] = []
         evidence: list[str] = []
@@ -49,7 +51,16 @@ class RiskPolicy:
             detected_by.append("risk_signals")
         evidence.extend(signal_result.evidence)
 
+        ml_score = self._ml_score(ml_result)
+        if ml_result is not None:
+            evidence.append(f"ml_score: {ml_result.score:.4f}")
+            evidence.append(f"ml_prediction: {ml_result.prediction}")
+            if ml_result.prediction == 1:
+                detected_by.append("ml")
+
         score = max(rule_score, signal_score)
+        if ml_result is not None and ml_result.prediction == 1:
+            score = max(score, ml_score, self._ml_positive_min_score())
         if rule_result.matched and signal_score > 0:
             score = min(100, score + 10)
 
@@ -71,8 +82,23 @@ class RiskPolicy:
         )
 
     def _load_config(self, config_path: str | Path) -> dict[str, Any]:
+        config = self._read_yaml(config_path)
+        if Path(config_path) == DEFAULT_CONFIG_PATH:
+            return config
+        return self._merge_dicts(self._read_yaml(DEFAULT_CONFIG_PATH), config)
+
+    def _read_yaml(self, config_path: str | Path) -> dict[str, Any]:
         with Path(config_path).open("r", encoding="utf-8") as config_file:
-            return yaml.safe_load(config_file)
+            return yaml.safe_load(config_file) or {}
+
+    def _merge_dicts(self, base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+        merged = dict(base)
+        for key, value in override.items():
+            if isinstance(value, dict) and isinstance(merged.get(key), dict):
+                merged[key] = self._merge_dicts(merged[key], value)
+            else:
+                merged[key] = value
+        return merged
 
     def _rule_score(self, rule_result: RuleDetectionResult) -> int:
         if not rule_result.matched:
@@ -86,6 +112,14 @@ class RiskPolicy:
         for name, value in signal_result.as_dict().items():
             weighted += value * weights.get(name, 0)
         return max(0, min(100, round(weighted)))
+
+    def _ml_score(self, ml_result: MLDetectionResult | None) -> int:
+        if ml_result is None:
+            return 0
+        return max(0, min(100, round(ml_result.score * 100)))
+
+    def _ml_positive_min_score(self) -> int:
+        return int(self.config.get("ml_policy", {}).get("positive_min_score", self.config["thresholds"]["medium"]))
 
     def _risk_level(self, score: int) -> str:
         thresholds = self.config["thresholds"]

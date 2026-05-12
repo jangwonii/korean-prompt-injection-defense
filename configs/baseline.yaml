@@ -22,6 +22,9 @@ signal_weights:
   mixed_language_score: 0.6
   hard_negative_context_score: -0.35
 
+ml_policy:
+  positive_min_score: 35
+
 actions:
   LOW: ALLOW
   MEDIUM: WARN

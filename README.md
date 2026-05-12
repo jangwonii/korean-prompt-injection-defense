@@ -2,18 +2,19 @@
 
 한국어 LLM 서비스 앞단에서 사용자 입력의 프롬프트 인젝션 위험을 판단하는 다층 방어 파이프라인입니다. 단순 정상/공격 이진 분류기가 아니라 정규화, 규칙 탐지, 방어 신호 앙상블, 위험도 정책을 분리해 탐지 근거와 대응 정책을 함께 반환합니다.
 
-## Phase 1 MVP
+## Phase 2 Baseline
 
 현재 구현 범위:
 
 - Input normalization layer
 - Rule-based detection layer
+- Classical ML detection layer
 - Risk signals ensemble layer
 - Risk scoring and defense policy layer
 - FastAPI `/detect`, `/health`
 - pytest 기반 기본 테스트
 
-Classical ML과 Transformer 계층은 다음 단계에서 같은 출력 계약에 연결합니다.
+학습된 Classical ML 모델이 있으면 `DefensePipeline`이 자동으로 해당 계층을 실행해 `detected_by`와 `evidence`에 ML 판단 근거를 포함합니다. Transformer 계층은 학습/추론 코드가 준비되어 있으며 다음 단계에서 같은 출력 계약에 연결합니다.
 
 ## Branch Strategy
 
@@ -87,9 +88,10 @@ py -3.11 -m venv .venv
 .venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode ml --config configs/ml.yaml
 .venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode transformer --config configs/transformer.yaml
 .venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode full --config configs/baseline.yaml
+.venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode full --config configs/ml.yaml
 ```
 
-`rule`과 `full` 평가는 학습된 모델 없이 실행할 수 있습니다. `ml`과 `transformer` 평가는 각각 학습 산출물인 `models/tfidf_logistic_regression.joblib`, `models/xlm-roberta-prompt-injection/`이 필요합니다.
+`rule`과 `configs/baseline.yaml` 기반 `full` 평가는 학습된 모델 없이 실행할 수 있습니다. `ml`과 `configs/ml.yaml` 기반 `full` 평가는 `models/tfidf_logistic_regression.joblib`이 필요합니다. `transformer` 평가는 `models/xlm-roberta-prompt-injection/`이 필요합니다.
 
 ## Run API
 

@@ -52,7 +52,7 @@ def evaluate(mode: str, config_path: str | Path) -> dict[str, float | int]:
         scores = [detector.detect(text).score for text in dataset.texts]
         predictions = [detector.detect(text).prediction for text in dataset.texts]
     elif mode == "full":
-        pipeline = DefensePipeline("configs/baseline.yaml")
+        pipeline = DefensePipeline(config_path)
         decisions = [pipeline.detect(text) for text in dataset.texts]
         scores = [decision["risk_score"] / 100 for decision in decisions]
         predictions = [1 if decision["is_injection"] else 0 for decision in decisions]

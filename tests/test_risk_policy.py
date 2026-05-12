@@ -1,4 +1,9 @@
 from src.pipeline.defense_pipeline import DefensePipeline
+from src.pipeline.ml_detector import MLDetectionResult
+from src.pipeline.normalizer import InputNormalizer
+from src.pipeline.risk_policy import RiskPolicy
+from src.pipeline.risk_signals import RiskSignals
+from src.pipeline.rule_detector import RuleBasedDetector
 
 
 def test_benign_input_is_allowed() -> None:
@@ -33,3 +38,17 @@ def test_hard_negative_context_discounts_risk() -> None:
 
     assert result["is_injection"] is False
     assert result["recommended_action"] == "ALLOW"
+
+
+def test_ml_positive_is_at_least_medium_risk() -> None:
+    normalized = InputNormalizer().normalize("오늘 회의록을 요약해줘.")
+    rule_result = RuleBasedDetector().detect(normalized)
+    signal_result = RiskSignals().analyze(normalized)
+    ml_result = MLDetectionResult(model="test_ml", score=0.31, prediction=1)
+
+    decision = RiskPolicy().decide(rule_result, signal_result, ml_result)
+
+    assert decision.is_injection is True
+    assert decision.risk_level == "MEDIUM"
+    assert decision.recommended_action == "WARN"
+    assert "ml" in decision.detected_by
