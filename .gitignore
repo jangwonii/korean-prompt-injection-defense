@@ -5,6 +5,7 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .env
+AGENTS.md
 data/raw/*
 data/interim/*
 data/processed/*
