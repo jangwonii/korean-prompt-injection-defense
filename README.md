@@ -40,6 +40,12 @@ py -3.11 -m venv .venv
 .venv\Scripts\pytest
 ```
 
+## Validate Dataset
+
+```powershell
+.venv\Scripts\python -m src.data.preprocess --config configs/baseline.yaml
+```
+
 ## Train Classical ML Detector
 
 ```powershell
@@ -77,10 +83,13 @@ py -3.11 -m venv .venv
 ## Evaluate
 
 ```powershell
+.venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode rule --config configs/baseline.yaml
 .venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode ml --config configs/ml.yaml
 .venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode transformer --config configs/transformer.yaml
-.venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode full --config configs/ml.yaml
+.venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode full --config configs/baseline.yaml
 ```
+
+`rule`과 `full` 평가는 학습된 모델 없이 실행할 수 있습니다. `ml`과 `transformer` 평가는 각각 학습 산출물인 `models/tfidf_logistic_regression.joblib`, `models/xlm-roberta-prompt-injection/`이 필요합니다.
 
 ## Run API
 

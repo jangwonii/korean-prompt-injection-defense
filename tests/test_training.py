@@ -58,3 +58,23 @@ def test_evaluate_full_pipeline_returns_security_metrics(tmp_path: Path) -> None
     assert "recall" in metrics
     assert "fnr" in metrics
     assert (tmp_path / "reports" / "full_metrics_summary.csv").exists()
+
+
+def test_evaluate_rule_pipeline_returns_security_metrics(tmp_path: Path) -> None:
+    config = {
+        "data": {
+            "train_path": "data/samples/prompt_injection_samples.csv",
+            "text_column": "text",
+            "label_column": "label",
+            "attack_type_column": "attack_type",
+        },
+        "reports": {"output_dir": str(tmp_path / "reports")},
+    }
+    config_path = tmp_path / "eval.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    metrics = evaluate("rule", config_path)
+
+    assert "recall" in metrics
+    assert "fnr" in metrics
+    assert (tmp_path / "reports" / "rule_metrics_summary.csv").exists()

@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from src.data.build_korean_obfuscation import build_obfuscation_dataset, split_korean_jamo
-from src.data.preprocess import validate_dataset
+from src.data.preprocess import resolve_input_path, validate_dataset
 
 
 def test_split_korean_jamo() -> None:
@@ -32,3 +32,14 @@ def test_validate_dataset() -> None:
     assert summary["rows"] == 20
     assert summary["positive"] == 14
     assert summary["negative"] == 6
+
+
+def test_resolve_input_path_from_config(tmp_path: Path) -> None:
+    config_path = tmp_path / "baseline.yaml"
+    config_path.write_text(
+        "data:\n"
+        "  train_path: data/samples/prompt_injection_samples.csv\n",
+        encoding="utf-8",
+    )
+
+    assert resolve_input_path(None, str(config_path)) == "data/samples/prompt_injection_samples.csv"
