@@ -25,6 +25,11 @@ signal_weights:
 ml_policy:
   positive_min_score: 35
 
+semantic_weights:
+  intent_score: 0.75
+  hierarchy_score: 0.85
+  canary_score: 1.0
+
 actions:
   LOW: ALLOW
   MEDIUM: WARN

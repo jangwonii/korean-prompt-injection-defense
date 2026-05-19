@@ -17,6 +17,12 @@ def test_pipeline_includes_required_schema_fields() -> None:
         "detected_by",
         "recommended_action",
         "evidence",
+        "intent",
+        "requested_action",
+        "hierarchy_violation",
+        "violated_hierarchy_level",
+        "intent_action_mismatch",
+        "canary_triggered",
     }
 
 
