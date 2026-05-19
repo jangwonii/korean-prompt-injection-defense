@@ -17,6 +17,12 @@ class DetectResponse(BaseModel):
     detected_by: list[str]
     recommended_action: str
     evidence: list[str]
+    intent: str
+    requested_action: str
+    hierarchy_violation: bool
+    violated_hierarchy_level: str
+    intent_action_mismatch: bool
+    canary_triggered: bool
 
 
 class HealthResponse(BaseModel):

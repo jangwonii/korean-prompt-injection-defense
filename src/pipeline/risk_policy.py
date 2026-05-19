@@ -6,6 +6,9 @@ from typing import Any
 
 import yaml
 
+from src.pipeline.canary_guard import CanaryGuardResult
+from src.pipeline.hierarchy_guard import HierarchyGuardResult
+from src.pipeline.intent_analyzer import IntentAnalysisResult
 from src.pipeline.rule_detector import RuleDetectionResult
 from src.pipeline.risk_signals import RiskSignalsResult
 
@@ -22,6 +25,12 @@ class RiskDecision:
     detected_by: list[str]
     recommended_action: str
     evidence: list[str]
+    intent: str
+    requested_action: str
+    hierarchy_violation: bool
+    violated_hierarchy_level: str
+    intent_action_mismatch: bool
+    canary_triggered: bool
 
 
 class RiskPolicy:
@@ -34,6 +43,9 @@ class RiskPolicy:
         self,
         rule_result: RuleDetectionResult,
         signal_result: RiskSignalsResult,
+        intent_result: IntentAnalysisResult,
+        hierarchy_result: HierarchyGuardResult,
+        canary_result: CanaryGuardResult,
     ) -> RiskDecision:
         detected_by: list[str] = []
         evidence: list[str] = []
@@ -49,16 +61,43 @@ class RiskPolicy:
             detected_by.append("risk_signals")
         evidence.extend(signal_result.evidence)
 
-        score = max(rule_score, signal_score)
+        semantic_score = self._semantic_score(intent_result, hierarchy_result, canary_result)
+        if intent_result.risk_score >= 35:
+            detected_by.append("intent_analyzer")
+        if hierarchy_result.hierarchy_violation:
+            detected_by.append("hierarchy_guard")
+        if canary_result.canary_triggered:
+            detected_by.append("canary_guard")
+        evidence.extend(intent_result.evidence)
+        evidence.extend(hierarchy_result.evidence)
+        evidence.extend(canary_result.evidence)
+
+        score = max(rule_score, signal_score, semantic_score)
         if rule_result.matched and signal_score > 0:
             score = min(100, score + 10)
+        if hierarchy_result.hierarchy_violation and rule_result.matched:
+            score = min(100, score + 10)
+        if canary_result.canary_triggered:
+            score = max(score, 80)
 
-        if signal_result.hard_negative_context_score >= 30 and not self._has_critical_rule(rule_result):
+        if (
+            signal_result.hard_negative_context_score >= 30
+            and not self._has_critical_rule(rule_result)
+            and not hierarchy_result.hierarchy_violation
+            and not canary_result.canary_triggered
+        ):
             score = max(0, score - 30)
 
         level = self._risk_level(score)
         action = self.config["actions"][level]
-        attack_type = self._attack_type(rule_result, signal_result, score)
+        attack_type = self._attack_type(
+            rule_result,
+            signal_result,
+            intent_result,
+            hierarchy_result,
+            canary_result,
+            score,
+        )
 
         return RiskDecision(
             is_injection=level in {"MEDIUM", "HIGH", "CRITICAL"},
@@ -68,6 +107,12 @@ class RiskPolicy:
             detected_by=list(dict.fromkeys(detected_by)),
             recommended_action=action,
             evidence=evidence,
+            intent=intent_result.intent,
+            requested_action=intent_result.requested_action,
+            hierarchy_violation=hierarchy_result.hierarchy_violation,
+            violated_hierarchy_level=hierarchy_result.violated_level,
+            intent_action_mismatch=intent_result.intent_action_mismatch,
+            canary_triggered=canary_result.canary_triggered,
         )
 
     def _load_config(self, config_path: str | Path) -> dict[str, Any]:
@@ -87,6 +132,20 @@ class RiskPolicy:
             weighted += value * weights.get(name, 0)
         return max(0, min(100, round(weighted)))
 
+    def _semantic_score(
+        self,
+        intent_result: IntentAnalysisResult,
+        hierarchy_result: HierarchyGuardResult,
+        canary_result: CanaryGuardResult,
+    ) -> int:
+        weights = self.config["semantic_weights"]
+        weighted = (
+            intent_result.risk_score * weights["intent_score"]
+            + hierarchy_result.risk_score * weights["hierarchy_score"]
+            + canary_result.risk_score * weights["canary_score"]
+        )
+        return max(0, min(100, round(weighted)))
+
     def _risk_level(self, score: int) -> str:
         thresholds = self.config["thresholds"]
         if score >= thresholds["critical"]:
@@ -101,6 +160,9 @@ class RiskPolicy:
         self,
         rule_result: RuleDetectionResult,
         signal_result: RiskSignalsResult,
+        intent_result: IntentAnalysisResult,
+        hierarchy_result: HierarchyGuardResult,
+        canary_result: CanaryGuardResult,
         score: int,
     ) -> str:
         priority = [
@@ -117,8 +179,16 @@ class RiskPolicy:
         for attack_type in priority:
             if attack_type in rule_result.attack_types:
                 return attack_type
+        if canary_result.canary_triggered:
+            return "DATA_EXFILTRATION"
+        if hierarchy_result.hierarchy_violation and hierarchy_result.violated_level in {"SYSTEM", "DEVELOPER"}:
+            return "SYSTEM_PROMPT_EXTRACTION"
+        if intent_result.intent == "POLICY_BYPASS_INTENT":
+            return "POLICY_BYPASS"
         if signal_result.mixed_language_score >= 70:
             return "MIXED_LANGUAGE_ATTACK"
+        if intent_result.requested_action == "OVERRIDE_INSTRUCTIONS":
+            return "DIRECT_INJECTION"
         if signal_result.obfuscation_score >= 45 and score >= 35:
             return "OBFUSCATED_KOREAN_ATTACK"
         if score >= 35:

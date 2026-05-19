@@ -9,6 +9,9 @@
 - Input normalization layer
 - Rule-based detection layer
 - Risk signals ensemble layer
+- Intent-action analysis layer
+- Instruction hierarchy guard
+- Canary marker simulation guard
 - Risk scoring and defense policy layer
 - FastAPI `/detect`, `/health`
 - pytest 기반 기본 테스트
@@ -20,6 +23,8 @@ Classical ML과 Transformer 계층은 다음 단계에서 같은 출력 계약�
 - `main`: stable release branch
 - `develop`: integration branch
 - `feature/phase1-defense-pipeline`: Phase 1 MVP implementation branch
+- `feature/ml-training-evaluation`: Classical ML training and evaluation branch
+- `feature/intent-hierarchy-defense`: intent, hierarchy, canary defense branch
 
 작업은 `develop`에서 feature 브랜치를 따서 진행하고, 테스트 통과 후 `develop`에 머지합니다. `main`은 안정 버전 병합 전까지 유지합니다.
 
@@ -99,7 +104,13 @@ Response:
   "attack_type": "SYSTEM_PROMPT_EXTRACTION",
   "detected_by": ["rule_based", "risk_signals"],
   "recommended_action": "BLOCK",
-  "evidence": ["matched pattern: system_prompt_extraction"]
+  "evidence": ["matched pattern: system_prompt_extraction"],
+  "intent": "INTERNAL_SECRET_REQUEST",
+  "requested_action": "REVEAL_PROTECTED_CONTEXT",
+  "hierarchy_violation": true,
+  "violated_hierarchy_level": "SYSTEM",
+  "intent_action_mismatch": false,
+  "canary_triggered": false
 }
 ```
 
@@ -115,13 +126,27 @@ Response:
 
 최종 정책은 규칙 탐지 결과와 신호 점수를 결합해 `ALLOW`, `WARN`, `REWRITE`, `BLOCK` 중 하나를 추천합니다.
 
+## Intent and Hierarchy Defense
+
+교수님 피드백처럼 이 문제를 단순 이진분류로 보면 연구 기여가 약합니다. 이 프로젝트는 입력을 다음 보안 속성으로 분해해 판단합니다.
+
+- `intent`: 사용자의 목적이 교육/분석인지, 내부 지시 추출인지, 역할 변경인지 분류
+- `requested_action`: 설명, 요약, 내부정보 공개, 지시 무시, 도구/파일 접근 같은 요구 행동 분류
+- `hierarchy_violation`: user 입력이 system/developer/tool 권한 경계를 침범하는지 판단
+- `intent_action_mismatch`: 겉으로는 교육/분석 목적이지만 실제 행동은 내부정보 공개나 지시 무시인지 판단
+- `canary_triggered`: 실제 비밀값 없이 숨겨진 marker/honey token 탐색 시도를 탐지
+
+따라서 최종 결과는 `0/1` classifier 출력이 아니라 LLM 입력 단계의 보안 정책 결정입니다.
+
 ## GitHub Remote
 
-이 환경에는 GitHub CLI(`gh`)가 설치되어 있지 않아 원격 저장소 생성은 보류되었습니다. 설치 및 인증 후 다음 명령으로 private repo를 생성하고 브랜치를 push합니다.
+원격 저장소:
+
+- `origin`: `https://github.com/jangwonii/korean-prompt-injection-defense.git`
+- 기본 브랜치: `main`
+- 통합 브랜치: `develop`
 
 ```powershell
-gh auth login
-gh repo create korean-prompt-injection-defense --private --source . --remote origin --push
 git push -u origin main
 git push -u origin develop
 ```
