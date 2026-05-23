@@ -29,9 +29,10 @@ def test_build_obfuscation_dataset(tmp_path: Path) -> None:
 def test_validate_dataset() -> None:
     summary = validate_dataset("data/samples/prompt_injection_samples.csv")
 
-    assert summary["rows"] == 20
-    assert summary["positive"] == 14
-    assert summary["negative"] == 6
+    assert summary["rows"] >= 50
+    assert summary["positive"] >= 30
+    assert summary["negative"] >= 15
+    assert summary["rows"] == summary["positive"] + summary["negative"]
 
 
 def test_resolve_input_path_from_config(tmp_path: Path) -> None:

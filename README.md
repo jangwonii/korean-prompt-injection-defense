@@ -27,7 +27,7 @@
 
 작업은 `develop`에서 feature 브랜치를 따서 진행하고, 테스트 통과 후 PR로 `develop`에 머지합니다. `main`은 안정 버전만 PR로 병합합니다.
 
-자세한 GitHub 운영 규칙과 단계별 커밋 계획은 [docs/git-workflow.md](docs/git-workflow.md)를 참고하세요.
+이 규칙은 모든 일반 개발 작업에 계속 적용합니다. 직접 `main`이나 `develop`에 커밋하지 않고, 기능/실험/문서 단위로 `feature/*` 브랜치를 만든 뒤 PR로 `develop`에 반영합니다. 자세한 GitHub 운영 규칙과 단계별 커밋 계획은 [docs/git-workflow.md](docs/git-workflow.md)를 참고하세요.
 
 ## Setup
 

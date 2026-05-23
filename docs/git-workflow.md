@@ -30,6 +30,62 @@ feature/* -> develop -> main
 - Preserve commit history; avoid squash merges when the research history matters.
 - Tag milestone releases from `main`.
 
+## Always-On Working Rule
+
+All implementation work must follow this loop unless a maintainer explicitly documents an exception in the PR:
+
+1. Start from the latest `develop`.
+2. Create one focused `feature/*` branch for the phase, issue, or experiment.
+3. Commit small, reviewable changes with Conventional Commit messages.
+4. Document the development process under `reports/development/`.
+5. Run the relevant tests and evaluation commands before opening a PR.
+6. Open the PR from `feature/*` into `develop`.
+7. Merge `develop` into `main` only through a release PR.
+
+Do not commit directly to `main` or `develop`. Generated artifacts such as `reports/*`, `models/*`, and `data/processed/*` stay out of Git unless a PR explicitly needs a small, reproducible sample.
+
+## Local Work Checklist
+
+Before starting work:
+
+```powershell
+git switch develop
+git pull --ff-only origin develop
+git switch -c feature/<phase-or-issue-name>
+```
+
+Before opening a PR:
+
+```powershell
+python -m pytest
+python -m src.data.preprocess --config configs/baseline.yaml
+python -m src.evaluation.evaluate_pipeline --mode full --config configs/baseline.yaml
+```
+
+If detection behavior changed, include the before/after recall, FNR, FPR, and any new false positives or false negatives in the PR body.
+
+## Development Process Reports
+
+Every feature PR must include a short process report in `reports/development/`.
+
+Use one Markdown file per feature branch:
+
+```text
+reports/development/<feature-name>.md
+```
+
+Each document should record:
+
+- Goal and scope
+- Branch name and target branch
+- Key implementation decisions
+- Data or policy changes
+- Commands run
+- Test and evaluation results
+- Known limitations and next steps
+
+Keep this report factual. It should help a reviewer understand why the change exists and how to reproduce the checks.
+
 ## Milestone Tags
 
 - `v0.1-baseline`
@@ -87,3 +143,10 @@ feature/* -> develop -> main
 - `feat: add Korean obfuscation evaluation report`
 - `docs: write final research report`
 - `docs: finalize reproducibility instructions`
+
+### Phase 6: Data And Policy Calibration
+
+- `data: expand Korean hard-negative and attack samples`
+- `feat: calibrate hard-negative policy handling`
+- `test: cover education-context false positives`
+- `docs: document calibration results`

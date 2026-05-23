@@ -27,8 +27,13 @@ HARD_NEGATIVE_PATTERNS = [
     r"무엇인지\s*설명",
     r"개념.*정리",
     r"보안\s*수업",
+    r"보안\s*교육",
     r"위험성.*(설명|분석|알려)",
     r"왜\s*위험한지",
+    r"탐지.*방법",
+    r"방어.*방법",
+    r"안전하게\s*관리",
+    r"관리하는\s*방법",
     r"교육",
     r"발표용",
 ]
@@ -38,8 +43,8 @@ RULES: list[tuple[str, str, str, str, list[str]]] = [
         "ignore_previous_instruction",
         "DIRECT_INJECTION",
         "high",
-        r"(ignore|disregard).{0,20}(previous|prior|above).{0,20}(instruction|command)|이전\s*지시.{0,10}무시|앞의\s*명령.{0,10}무시",
-        ["이전지시를무시", "앞의명령을무시", "ignorepreviousinstructions"],
+        r"(ignore|disregard).{0,20}(previous|prior|above).{0,20}(instruction|command)|이전\s*(지시|지침).{0,10}무시|앞의\s*명령.{0,10}무시|이전\s*(지시|지침).{0,10}(지워|잊어)|시스템\s*지시.{0,10}잊고|내\s*말만\s*따라",
+        ["이전지시를무시", "앞의명령을무시", "ignorepreviousinstructions", "이전지침을지우고", "내말만따라", "시스템지시는잊고"],
     ),
     (
         "system_prompt_extraction",
@@ -111,6 +116,7 @@ class RuleBasedDetector:
                 "JAILBREAK",
                 "POLICY_BYPASS",
                 "SYSTEM_PROMPT_EXTRACTION",
+                "DATA_EXFILTRATION",
             }:
                 continue
             matches.append(RuleMatch(name, attack_type, evidence, risk_hint))

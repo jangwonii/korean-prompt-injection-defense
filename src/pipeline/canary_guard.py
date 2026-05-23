@@ -33,15 +33,23 @@ class CanaryGuard:
         compact = normalized_input.compact
         evidence: list[str] = []
         score = 0
+        educational_reference = self._is_educational_reference(text)
 
         for term in CANARY_TERMS:
             compact_term = re.sub(r"[\s\W_]+", "", term.lower())
             if term.lower() in text or compact_term in compact:
-                score += 60
-                evidence.append(f"canary: marker access request '{term}'")
+                if educational_reference:
+                    evidence.append(f"canary: educational marker reference '{term}'")
+                else:
+                    score += 60
+                    evidence.append(f"canary: marker access request '{term}'")
                 break
 
-        if score == 0 and re.search(r"(숨겨진|hidden).{0,12}(토큰|token|marker|마커|규칙)", text, flags=re.IGNORECASE):
+        if (
+            score == 0
+            and not educational_reference
+            and re.search(r"(숨겨진|hidden).{0,12}(토큰|token|marker|마커|규칙)", text, flags=re.IGNORECASE)
+        ):
             score = 50
             evidence.append("canary: hidden marker/token probing")
 
@@ -50,3 +58,6 @@ class CanaryGuard:
             risk_score=min(score, 100),
             evidence=evidence,
         )
+
+    def _is_educational_reference(self, text: str) -> bool:
+        return bool(re.search(r"개념|교육|수업|발표용|무엇인지\s*설명|왜\s*위험한지|방어.*방법", text))

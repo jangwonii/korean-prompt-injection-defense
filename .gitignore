@@ -10,6 +10,10 @@ data/raw/*
 data/interim/*
 data/processed/*
 reports/*
+!reports/.gitkeep
+!reports/*.md
+!reports/development/
+!reports/development/*.md
 models/
 checkpoints/
 !.gitkeep

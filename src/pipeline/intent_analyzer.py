@@ -40,7 +40,10 @@ class IntentAnalyzer:
         )
 
     def _classify_intent(self, text: str, compact: str, evidence: list[str]) -> str:
-        if re.search(r"보안\s*수업|발표용|위험성|무엇인지\s*설명|개념.*정리|왜\s*위험한지|교육", text):
+        if re.search(
+            r"보안\s*(수업|교육)|발표용|위험성|무엇인지\s*설명|개념.*정리|왜\s*위험한지|교육|탐지.*방법|방어.*방법|안전하게\s*관리|관리하는\s*방법",
+            text,
+        ):
             evidence.append("intent: security education context")
             return "SECURITY_EDUCATION"
         if re.search(r"시스템\s*프롬프트|개발자\s*메시지|내부\s*규칙|숨겨진\s*지시", text) or any(
@@ -57,8 +60,11 @@ class IntentAnalyzer:
         return "BENIGN_TASK"
 
     def _classify_action(self, text: str, compact: str, evidence: list[str]) -> str:
-        if re.search(r"(문장|문구|표현).{0,12}(왜\s*위험한지|분석|설명)", text):
+        if re.search(r"(문장|문구|표현|요청).{0,16}(왜\s*위험한지|분석|설명|탐지)", text):
             evidence.append("action: quoted security phrase analysis")
+            return "EXPLAIN"
+        if re.search(r"(출력|공개|보여).{0,12}(요청|문구).{0,16}(왜\s*위험한지|분석|설명)", text):
+            evidence.append("action: protected-context request analysis")
             return "EXPLAIN"
         if re.search(r"출력|보여|공개|알려|reveal|show|print", text, flags=re.IGNORECASE):
             if re.search(r"시스템\s*프롬프트|개발자\s*메시지|내부\s*규칙|api\s*key|token|credential|비밀", text, flags=re.IGNORECASE) or any(
@@ -68,7 +74,7 @@ class IntentAnalyzer:
                 return "REVEAL_PROTECTED_CONTEXT"
             evidence.append("action: explain or show content")
             return "EXPLAIN"
-        if re.search(r"무시|ignore|disregard|역할.*변경|너는.*관리자", text, flags=re.IGNORECASE):
+        if re.search(r"무시|ignore|disregard|역할.*변경|너는.*관리자|지침.*지우|지시.*잊|내\s*말만\s*따라", text, flags=re.IGNORECASE):
             evidence.append("action: override instructions")
             return "OVERRIDE_INSTRUCTIONS"
         if re.search(r"파일|file|tool|api|도구|접근|호출|삭제|읽어", text, flags=re.IGNORECASE):
