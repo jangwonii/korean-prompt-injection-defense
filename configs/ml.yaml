@@ -13,7 +13,7 @@ model:
   max_features: 5000
   ngram_range: [1, 2]
   class_weight: balanced
-  threshold: 0.45
+  threshold: 0.5
 
 reports:
   output_dir: reports

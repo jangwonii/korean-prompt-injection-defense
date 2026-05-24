@@ -25,15 +25,17 @@ data/samples/prompt_injection_samples.csv
 
 이 파일은 외부 공개 데이터셋이 아니라 프로젝트 내부에서 직접 작성한 curated sample dataset이다. 목적은 최종 모델 성능 주장이 아니라 파이프라인 기능 검증, 정책 튜닝, smoke training, 회귀 테스트 고정이다.
 
-Phase 6 기준:
+현재 workspace 기준:
 
-- Total rows: 53
-- Positive: 35
-- Negative: 18
+- Total rows: 101
+- Positive: 59
+- Negative: 42
 - Format: CSV
 - Columns: `text`, `label`, `attack_type`
 - Label `0`: benign input
 - Label `1`: prompt injection or security-risk input
+
+이 수치는 Transformer smoke training과 회귀 테스트의 현재 기준선이다. 최종 연구 성능은 이 샘플 수치가 아니라 공개 데이터셋 수집, 한국어 번역/우회형 증강, group-aware split 이후 별도로 산출한다.
 
 ## 최종 데이터셋 구성 방침
 
@@ -290,6 +292,17 @@ Phase 7에서 추가할 1차 공개 데이터셋:
 - `neuralchemy/Prompt-injection-dataset`
   - primary public train/eval source
   - category, severity, source, leakage-prevention 구조가 현재 프로젝트와 가장 잘 맞음
+  - 현재 `core` config의 `train` split을 수집해 group-aware split으로 재분할함
+  - local raw: `data/raw/neuralchemy_core.csv`
+  - local processed:
+    - `data/processed/public_prompt_injection_train.csv`
+    - `data/processed/public_prompt_injection_dev.csv`
+    - `data/processed/public_prompt_injection_test.csv`
+  - split summary:
+    - all: 4,391 rows, positive 2,650, negative 1,741
+    - train: 3,513 rows, positive 2,113, negative 1,400
+    - dev: 439 rows, positive 266, negative 173
+    - test: 439 rows, positive 271, negative 168
 
 Phase 7 또는 Phase 8에서 추가할 공격 확장 데이터셋:
 
