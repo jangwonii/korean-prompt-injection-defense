@@ -101,7 +101,7 @@ class RiskPolicy:
             and not hierarchy_result.hierarchy_violation
             and not canary_result.canary_triggered
         ):
-            score = max(0, score - 30)
+            score = max(0, score - 35)
 
         level = self._risk_level(score)
         action = self.config["actions"][level]

@@ -13,6 +13,7 @@ from sklearn.pipeline import Pipeline
 
 from src.data.load_datasets import load_csv_dataset
 from src.evaluation.metrics import compute_binary_metrics, write_confusion_matrix, write_dict_csv
+from src.pipeline.normalizer import InputNormalizer
 from src.utils.seed import set_seed
 
 
@@ -30,26 +31,40 @@ def train(config_path: str | Path = "configs/ml.yaml") -> dict[str, Any]:
     model_config = config["model"]
     report_dir = Path(config["reports"]["output_dir"])
     report_dir.mkdir(parents=True, exist_ok=True)
+    normalizer = InputNormalizer()
 
-    dataset = load_csv_dataset(
+    train_dataset = load_csv_dataset(
         data_config["train_path"],
         data_config["text_column"],
         data_config["label_column"],
         data_config["attack_type_column"],
     )
 
-    indices = list(range(len(dataset.texts)))
-    train_idx, test_idx = train_test_split(
-        indices,
-        test_size=float(data_config["test_size"]),
-        random_state=seed,
-        stratify=dataset.labels,
-    )
+    eval_path = data_config.get("eval_path") or data_config.get("test_path")
+    if eval_path:
+        eval_dataset = load_csv_dataset(
+            eval_path,
+            data_config["text_column"],
+            data_config["label_column"],
+            data_config["attack_type_column"],
+        )
+        train_texts = _normalize_texts(train_dataset.texts, normalizer)
+        test_texts = _normalize_texts(eval_dataset.texts, normalizer)
+        y_train = train_dataset.labels
+        y_test = eval_dataset.labels
+    else:
+        indices = list(range(len(train_dataset.texts)))
+        train_idx, test_idx = train_test_split(
+            indices,
+            test_size=float(data_config["test_size"]),
+            random_state=seed,
+            stratify=train_dataset.labels,
+        )
 
-    train_texts = [dataset.texts[index] for index in train_idx]
-    test_texts = [dataset.texts[index] for index in test_idx]
-    y_train = [dataset.labels[index] for index in train_idx]
-    y_test = [dataset.labels[index] for index in test_idx]
+        train_texts = _normalize_texts([train_dataset.texts[index] for index in train_idx], normalizer)
+        test_texts = _normalize_texts([train_dataset.texts[index] for index in test_idx], normalizer)
+        y_train = [train_dataset.labels[index] for index in train_idx]
+        y_test = [train_dataset.labels[index] for index in test_idx]
 
     pipeline = Pipeline(
         steps=[
@@ -121,8 +136,21 @@ def train(config_path: str | Path = "configs/ml.yaml") -> dict[str, Any]:
             if "ㅅ" in text or "  " in text or "이 전" in text
         ],
     )
-    write_report(report_dir / "experiment_report.md", model_config["name"], metrics_row, model_path)
+    write_report(
+        report_dir / "experiment_report.md",
+        model_config["name"],
+        metrics_row,
+        model_path,
+        train_path=data_config["train_path"],
+        eval_path=eval_path or f"random {data_config['test_size']} split from train_path",
+        train_size=len(train_texts),
+        eval_size=len(test_texts),
+    )
     return {"model_path": str(model_path), "metrics": metrics_row}
+
+
+def _normalize_texts(texts: list[str], normalizer: InputNormalizer) -> list[str]:
+    return [normalizer.normalize(text).normalized for text in texts]
 
 
 def write_report(
@@ -130,13 +158,23 @@ def write_report(
     model_name: str,
     metrics: dict[str, Any],
     model_path: Path,
+    train_path: str = "data/samples/prompt_injection_samples.csv",
+    eval_path: str = "random split",
+    train_size: int | None = None,
+    eval_size: int | None = None,
 ) -> None:
+    train_size_line = f"- Train rows: {train_size}" if train_size is not None else "- Train rows: unknown"
+    eval_size_line = f"- Eval rows: {eval_size}" if eval_size is not None else "- Eval rows: unknown"
     content = f"""# Experiment Report
 
 ## 설정
 - Model: `{model_name}`
 - Saved checkpoint: `{model_path}`
 - Detector: TF-IDF char n-gram + Logistic Regression
+- Train dataset: `{train_path}`
+- Evaluation dataset: `{eval_path}`
+{train_size_line}
+{eval_size_line}
 
 ## 성능
 - Accuracy: {metrics["accuracy"]:.4f}
@@ -147,18 +185,17 @@ def write_report(
 - FNR: {metrics["fnr"]:.4f}
 
 ## 보안 관점 해석
-Recall과 FNR을 핵심 위험 지표로 본다. 샘플 데이터 기반 초기 실험이므로 실제 발표/보고서에는 공개 데이터셋과 한국어 우회형 확장 데이터로 재학습한 결과를 사용해야 한다.
+Recall과 FNR을 핵심 위험 지표로 본다. 공개 데이터셋 holdout을 사용할 때는 `eval_path`를 기준으로 성능을 해석하고, sample dataset 결과는 smoke/regression 확인으로만 사용한다.
 
 ## 한계점
-- 현재 데이터는 작은 synthetic sample이다.
-- Transformer 문맥 탐지 계층은 아직 포함하지 않았다.
-- Hard negative는 더 다양한 보안 교육 문장으로 확장해야 한다.
+- 현재 공개 데이터셋은 영어 중심이므로 한국어 운영 성능을 직접 대표하지 않는다.
+- Public dataset에는 prompt injection, jailbreak, harmful-content safety 요청이 섞여 있어 attack taxonomy 정제가 필요하다.
+- Transformer 문맥 탐지 계층과 한국어 번역/우회형 holdout 평가는 별도로 수행해야 한다.
 
 ## 개선 방향
-- 공개 prompt injection dataset 추가
 - 한국어 번역/우회형 데이터 증강
 - threshold sweep으로 FNR 우선 운영점 선택
-- ML 계층을 `DefensePipeline`에 선택적으로 연결
+- attack-type별 recall/FNR 리포트 추가
 """
     path.write_text(content, encoding="utf-8")
 

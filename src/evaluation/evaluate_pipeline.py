@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 from typing import Any
 
@@ -26,7 +27,7 @@ def evaluate(mode: str, config_path: str | Path) -> dict[str, float | int]:
     report_dir = Path(config.get("reports", {}).get("output_dir", "reports"))
     report_dir.mkdir(parents=True, exist_ok=True)
     dataset = load_csv_dataset(
-        data_config["train_path"],
+        data_config["eval_path"],
         data_config["text_column"],
         data_config["label_column"],
         data_config["attack_type_column"],
@@ -40,12 +41,13 @@ def evaluate(mode: str, config_path: str | Path) -> dict[str, float | int]:
         predictions = [1 if result.matched else 0 for result in results]
     elif mode == "ml":
         detector = MLDetector(config["model"]["output_path"])
-        results = [detector.detect(text) for text in dataset.texts]
+        normalizer = InputNormalizer()
+        results = [detector.detect(normalizer.normalize(text).normalized) for text in dataset.texts]
         scores = [result.score for result in results]
         predictions = [result.prediction for result in results]
     elif mode == "transformer":
         detector = TransformerDetector(
-            config["model"]["output_dir"],
+            os.environ.get("TRANSFORMER_OUTPUT_DIR", config["model"]["output_dir"]),
             threshold=float(config["model"]["threshold"]),
             max_length=int(config["model"]["max_length"]),
         )
@@ -95,6 +97,10 @@ def _data_config(config: dict[str, Any]) -> dict[str, str]:
     data_config = config.get("data", {})
     return {
         "train_path": data_config.get("train_path", "data/samples/prompt_injection_samples.csv"),
+        "eval_path": data_config.get(
+            "eval_path",
+            data_config.get("test_path", data_config.get("train_path", "data/samples/prompt_injection_samples.csv")),
+        ),
         "text_column": data_config.get("text_column", "text"),
         "label_column": data_config.get("label_column", "label"),
         "attack_type_column": data_config.get("attack_type_column", "attack_type"),
