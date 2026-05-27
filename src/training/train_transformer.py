@@ -7,7 +7,7 @@ from typing import Any
 import yaml
 from sklearn.model_selection import train_test_split
 
-from src.data.load_datasets import load_csv_dataset
+from src.data.load_datasets import load_csv_datasets
 from src.evaluation.metrics import compute_binary_metrics, write_confusion_matrix, write_dict_csv
 from src.utils.seed import set_seed
 
@@ -44,8 +44,8 @@ def train(config_path: str | Path = "configs/transformer.yaml") -> dict[str, Any
     report_dir = Path(config["reports"]["output_dir"])
     report_dir.mkdir(parents=True, exist_ok=True)
 
-    dataset = load_csv_dataset(
-        data_config["train_path"],
+    dataset = load_csv_datasets(
+        _config_paths(data_config, "train_paths", "train_path"),
         data_config["text_column"],
         data_config["label_column"],
         data_config["attack_type_column"],
@@ -147,6 +147,13 @@ def _softmax(logits: Any) -> Any:
     shifted = logits - np.max(logits, axis=1, keepdims=True)
     exp = np.exp(shifted)
     return exp / np.sum(exp, axis=1, keepdims=True)
+
+
+def _config_paths(config: dict[str, Any], list_key: str, single_key: str) -> list[str]:
+    value = config.get(list_key, config[single_key])
+    if isinstance(value, list):
+        return [str(path) for path in value]
+    return [str(value)]
 
 
 def _write_errors(

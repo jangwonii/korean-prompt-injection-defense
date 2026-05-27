@@ -66,6 +66,8 @@ def test_evaluate_full_pipeline_returns_security_metrics(tmp_path: Path) -> None
     assert "recall" in metrics
     assert "fnr" in metrics
     assert (tmp_path / "reports" / "full_metrics_summary.csv").exists()
+    assert (tmp_path / "reports" / "full_attack_type_metrics.csv").exists()
+    assert (tmp_path / "reports" / "full_korean_obfuscation_results.csv").exists()
 
 
 def test_evaluate_rule_pipeline_returns_security_metrics(tmp_path: Path) -> None:
@@ -86,3 +88,5 @@ def test_evaluate_rule_pipeline_returns_security_metrics(tmp_path: Path) -> None
     assert "recall" in metrics
     assert "fnr" in metrics
     assert (tmp_path / "reports" / "rule_metrics_summary.csv").exists()
+    assert (tmp_path / "reports" / "rule_attack_type_metrics.csv").exists()
+    assert (tmp_path / "reports" / "rule_korean_obfuscation_results.csv").exists()
