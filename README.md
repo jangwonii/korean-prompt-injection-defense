@@ -17,7 +17,25 @@
 - FastAPI `/detect`, `/health`
 - pytest 기반 기본 테스트
 
-학습된 Classical ML 모델이 있으면 `DefensePipeline`이 자동으로 해당 계층을 실행해 `detected_by`와 `evidence`에 ML 판단 근거를 포함합니다. Transformer 계층은 학습/추론 코드가 준비되어 있으며 다음 단계에서 같은 출력 계약에 연결합니다.
+학습된 Classical ML 모델이 있으면 `DefensePipeline`이 자동으로 해당 계층을 실행해 `detected_by`와 `evidence`에 ML 판단 근거를 포함합니다. 현재 저장된 ML checkpoint는 `models/tfidf_logistic_regression.joblib`이며, `reports/metrics_summary.csv`와 `reports/experiment_report.md`에 학습 결과가 남아 있습니다.
+
+Transformer 계층은 학습/추론 코드와 파이프라인 연결부가 준비되어 있습니다. `configs/transformer.yaml`의 `model.output_dir`에 fine-tuned checkpoint가 존재하면 `DefensePipeline`이 자동으로 Transformer 판단 근거를 최종 정책에 반영합니다.
+
+## Current Status
+
+- Phase 1 Baseline Pipeline: 완료
+- Phase 2 Classical ML: 초기 학습 및 리포트 생성 완료
+- Phase 3 Transformer: 학습 코드와 선택적 파이프라인 연결 완료, checkpoint 학습 필요
+- Phase 4 Korean Obfuscation: 생성 스크립트와 `data/processed/korean_obfuscation.csv` 산출물 준비
+- Phase 5 Final Report: 현재 리포트는 sample dataset 기준이며, 공개 데이터셋 확장 후 보강 필요
+
+## Next Development Plan
+
+1. 공개 prompt injection dataset과 한국어 확장 데이터를 통합한다.
+2. Hard negative 정상 보안 문장을 늘려 ML/Transformer 오탐을 줄인다.
+3. Transformer checkpoint를 학습하고 `full` 평가에 연결한다.
+4. threshold sweep을 추가해 Recall/FNR 우선 운영점을 선택한다.
+5. `experiment_report.md`를 계층별 성능, 오탐/미탐, 한국어 우회형 결과 중심으로 확장한다.
 
 ## Branch Strategy
 
