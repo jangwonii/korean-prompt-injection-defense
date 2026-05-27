@@ -13,6 +13,9 @@ model:
   max_length: 256
   threshold: 0.5
 
+transformer_policy:
+  positive_min_score: 65
+
 training:
   learning_rate: 0.00002
   num_train_epochs: 3

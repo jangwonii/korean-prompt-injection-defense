@@ -14,6 +14,7 @@ from src.pipeline.normalizer import InputNormalizer
 from src.pipeline.risk_policy import RiskPolicy
 from src.pipeline.risk_signals import RiskSignals
 from src.pipeline.rule_detector import RuleBasedDetector
+from src.pipeline.transformer_detector import TransformerDetector
 
 
 class DefensePipeline:
@@ -29,22 +30,27 @@ class DefensePipeline:
         self.canary_guard = CanaryGuard()
         self.risk_policy = RiskPolicy(config_path)
         self.ml_detector = self._load_ml_detector(self.config_path)
+        self.transformer_detector = self._load_transformer_detector(self.config_path)
 
     def detect(self, text: str) -> dict[str, Any]:
         normalized = self.normalizer.normalize(text)
         rule_result = self.rule_detector.detect(normalized)
         signal_result = self.risk_signals.analyze(normalized)
         ml_result = self.ml_detector.detect(normalized.normalized) if self.ml_detector else None
+        transformer_result = (
+            self.transformer_detector.detect(normalized.normalized) if self.transformer_detector else None
+        )
         intent_result = self.intent_analyzer.analyze(normalized)
         hierarchy_result = self.hierarchy_guard.analyze(normalized, intent_result)
         canary_result = self.canary_guard.analyze(normalized)
         decision = self.risk_policy.decide(
             rule_result,
             signal_result,
-            ml_result,
-            intent_result,
-            hierarchy_result,
-            canary_result,
+            ml_result=ml_result,
+            intent_result=intent_result,
+            hierarchy_result=hierarchy_result,
+            canary_result=canary_result,
+            transformer_result=transformer_result,
         )
 
         return {
@@ -63,3 +69,19 @@ class DefensePipeline:
         if not path.exists():
             return None
         return MLDetector(path)
+
+    def _load_transformer_detector(self, config_path: Path) -> TransformerDetector | None:
+        with config_path.open("r", encoding="utf-8") as config_file:
+            config = yaml.safe_load(config_file) or {}
+        model_config = config.get("model", {})
+        model_dir = model_config.get("output_dir")
+        if not model_dir:
+            return None
+        path = Path(model_dir)
+        if not path.exists():
+            return None
+        return TransformerDetector(
+            path,
+            threshold=float(model_config.get("threshold", 0.5)),
+            max_length=int(model_config.get("max_length", 256)),
+        )

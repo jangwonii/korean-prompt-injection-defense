@@ -51,8 +51,9 @@ def evaluate(mode: str, config_path: str | Path) -> dict[str, float | int]:
             threshold=float(config["model"]["threshold"]),
             max_length=int(config["model"]["max_length"]),
         )
-        scores = [detector.detect(text).score for text in dataset.texts]
-        predictions = [detector.detect(text).prediction for text in dataset.texts]
+        results = [detector.detect(text) for text in dataset.texts]
+        scores = [result.score for result in results]
+        predictions = [result.prediction for result in results]
     elif mode == "full":
         pipeline = DefensePipeline(config_path)
         decisions = [pipeline.detect(text) for text in dataset.texts]

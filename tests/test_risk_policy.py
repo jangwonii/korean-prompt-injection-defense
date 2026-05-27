@@ -4,6 +4,7 @@ from src.pipeline.normalizer import InputNormalizer
 from src.pipeline.risk_policy import RiskPolicy
 from src.pipeline.risk_signals import RiskSignals
 from src.pipeline.rule_detector import RuleBasedDetector
+from src.pipeline.transformer_detector import TransformerDetectionResult
 
 
 def test_benign_input_is_allowed() -> None:
@@ -76,3 +77,21 @@ def test_ml_positive_is_at_least_medium_risk() -> None:
     assert decision.risk_level == "MEDIUM"
     assert decision.recommended_action == "WARN"
     assert "ml" in decision.detected_by
+
+
+def test_transformer_positive_is_at_least_high_risk() -> None:
+    normalized = InputNormalizer().normalize("오늘 회의록을 요약해줘.")
+    rule_result = RuleBasedDetector().detect(normalized)
+    signal_result = RiskSignals().analyze(normalized)
+    transformer_result = TransformerDetectionResult(model="test_transformer", score=0.66, prediction=1)
+
+    decision = RiskPolicy().decide(
+        rule_result,
+        signal_result,
+        transformer_result=transformer_result,
+    )
+
+    assert decision.is_injection is True
+    assert decision.risk_level == "HIGH"
+    assert decision.recommended_action == "REWRITE"
+    assert "transformer" in decision.detected_by
