@@ -2,9 +2,6 @@ seed: 42
 
 data:
   train_path: data/samples/prompt_injection_samples.csv
-  eval_paths:
-    - data/samples/prompt_injection_samples.csv
-    - data/samples/local_eval_extension.csv
   test_size: 0.3
   text_column: text
   label_column: label
@@ -15,9 +12,6 @@ model:
   output_dir: models/xlm-roberta-prompt-injection
   max_length: 256
   threshold: 0.5
-
-transformer_policy:
-  positive_min_score: 65
 
 training:
   learning_rate: 0.00002
