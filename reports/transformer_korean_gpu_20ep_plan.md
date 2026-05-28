@@ -1,13 +1,13 @@
-# Korean Transformer 20 Epoch Training Plan
+# Korean Transformer 20 Epoch Training Report
 
 ## Status
 
-GPU 학습은 현재 로컬 환경에서 실행되지 않았다.
+GPU 학습을 완료했다.
 
-- PyTorch: `2.11.0+cpu`
-- CUDA available: `false`
-- `nvidia-smi`: unavailable
-- Blocker: `configs/transformer_korean_gpu_20ep.yaml` requires CUDA by design.
+- PyTorch: `2.12.0+cu126`
+- CUDA available: `true`
+- GPU: `NVIDIA GeForce RTX 3060`
+- Python environment: `C:\Users\이장원\.venv`
 
 ## Dataset
 
@@ -61,3 +61,31 @@ Expected output:
 - `reports/transformer_false_negatives.csv`
 - `reports/transformer_korean_obfuscation_results.csv`
 - `reports/transformer_experiment_report.md`
+
+## Test Results
+
+Test split 기준 결과:
+
+| metric | value |
+| --- | ---: |
+| Accuracy | 0.9992 |
+| Precision | 0.9996 |
+| Recall | 0.9994 |
+| F1 | 0.9995 |
+| FPR | 0.0018 |
+| FNR | 0.0006 |
+
+Confusion matrix:
+
+| item | count |
+| --- | ---: |
+| True Negative | 15655 |
+| False Positive | 29 |
+| False Negative | 40 |
+| True Positive | 68580 |
+
+## Notes
+
+- `models/`와 `data/processed/`는 `.gitignore` 대상이므로 checkpoint와 processed CSV는 로컬 산출물이다.
+- 데이터셋 규모가 커지고 한국어 `INJECTION` 라벨이 많이 포함되어 test split도 공격 비율이 높다.
+- 최종 발표에서는 Recall/FNR 중심 결과와 함께 source별/attack_type별 오류 분석을 같이 제시해야 한다.

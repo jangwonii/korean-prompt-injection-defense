@@ -137,6 +137,9 @@ def train(config_path: str | Path = "configs/transformer.yaml") -> dict[str, Any
         save_strategy=training_config["save_strategy"],
         eval_strategy=training_config.get("evaluation_strategy", "epoch"),
         load_best_model_at_end=bool(training_config["load_best_model_at_end"]),
+        fp16=bool(training_config.get("fp16", False)),
+        gradient_accumulation_steps=int(training_config.get("gradient_accumulation_steps", 1)),
+        save_total_limit=training_config.get("save_total_limit"),
         seed=seed,
         report_to=[],
     )
@@ -289,6 +292,8 @@ def _write_report(
 - Max length: {model_config["max_length"]}
 - Epochs: {training_config["num_train_epochs"]}
 - Batch size: {training_config["per_device_train_batch_size"]}
+- Gradient accumulation steps: {training_config.get("gradient_accumulation_steps", 1)}
+- FP16: {training_config.get("fp16", False)}
 - Freeze base model: {model_config.get("freeze_base_model", False)}
 
 ## 성능
