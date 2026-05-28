@@ -8,7 +8,7 @@ from typing import Any
 import yaml
 
 from src.data.load_datasets import load_csv_datasets
-from src.evaluation.metrics import compute_binary_metrics, write_confusion_matrix, write_dict_csv
+from src.evaluation.writers import resolve_report_dir, write_evaluation_outputs
 from src.pipeline.defense_pipeline import DefensePipeline
 from src.pipeline.ml_detector import MLDetector
 from src.pipeline.normalizer import InputNormalizer
@@ -24,8 +24,7 @@ def load_config(path: str | Path) -> dict[str, Any]:
 def evaluate(mode: str, config_path: str | Path) -> dict[str, float | int]:
     config = load_config(config_path)
     data_config = _data_config(config)
-    report_dir = Path(config.get("reports", {}).get("output_dir", "reports"))
-    report_dir.mkdir(parents=True, exist_ok=True)
+    report_dir = resolve_report_dir(config)
     dataset = load_csv_datasets(
         data_config["eval_paths"],
         data_config["text_column"],
@@ -69,12 +68,7 @@ def evaluate(mode: str, config_path: str | Path) -> dict[str, float | int]:
     else:
         raise ValueError("mode must be one of: rule, ml, transformer, full")
 
-    metrics = compute_binary_metrics(dataset.labels, predictions)
-    metrics_row = {"mode": mode, **metrics}
-    write_dict_csv(report_dir / f"{mode}_metrics_summary.csv", [metrics_row])
-    write_confusion_matrix(report_dir / f"{mode}_confusion_matrix.csv", metrics)
-    write_attack_type_metrics(report_dir, mode, dataset.labels, dataset.attack_types, predictions)
-    write_errors(
+    return write_evaluation_outputs(
         report_dir,
         mode,
         dataset.texts,
@@ -85,108 +79,6 @@ def evaluate(mode: str, config_path: str | Path) -> dict[str, float | int]:
         risk_levels,
         detected_by,
     )
-    write_korean_obfuscation_results(
-        report_dir,
-        mode,
-        dataset.texts,
-        dataset.labels,
-        dataset.attack_types,
-        predictions,
-        scores,
-        risk_levels,
-        detected_by,
-    )
-    return metrics
-
-
-def write_errors(
-    report_dir: Path,
-    mode: str,
-    texts: list[str],
-    labels: list[int],
-    attack_types: list[str],
-    predictions: list[int],
-    scores: list[float],
-    risk_levels: list[str],
-    detected_by: list[str],
-) -> None:
-    rows = [
-        {
-            "text": text,
-            "attack_type": attack_type,
-            "actual": actual,
-            "predicted": predicted,
-            "score": round(float(score), 4),
-            "risk_level": risk_level,
-            "detected_by": detectors,
-        }
-        for text, attack_type, actual, predicted, score, risk_level, detectors in zip(
-            texts,
-            attack_types,
-            labels,
-            predictions,
-            scores,
-            risk_levels,
-            detected_by,
-        )
-        if actual != predicted
-    ]
-    write_dict_csv(report_dir / f"{mode}_false_positives.csv", [row for row in rows if row["actual"] == 0])
-    write_dict_csv(report_dir / f"{mode}_false_negatives.csv", [row for row in rows if row["actual"] == 1])
-
-
-def write_attack_type_metrics(
-    report_dir: Path,
-    mode: str,
-    labels: list[int],
-    attack_types: list[str],
-    predictions: list[int],
-) -> None:
-    rows = []
-    for attack_type in sorted(set(attack_types)):
-        indices = [index for index, value in enumerate(attack_types) if value == attack_type]
-        metrics = compute_binary_metrics(
-            [labels[index] for index in indices],
-            [predictions[index] for index in indices],
-        )
-        rows.append({"mode": mode, "attack_type": attack_type, "samples": len(indices), **metrics})
-    write_dict_csv(report_dir / f"{mode}_attack_type_metrics.csv", rows)
-
-
-def write_korean_obfuscation_results(
-    report_dir: Path,
-    mode: str,
-    texts: list[str],
-    labels: list[int],
-    attack_types: list[str],
-    predictions: list[int],
-    scores: list[float],
-    risk_levels: list[str],
-    detected_by: list[str],
-) -> None:
-    target_types = {"OBFUSCATED_KOREAN_ATTACK", "MIXED_LANGUAGE_ATTACK"}
-    rows = [
-        {
-            "text": text,
-            "attack_type": attack_type,
-            "actual": actual,
-            "predicted": predicted,
-            "score": round(float(score), 4),
-            "risk_level": risk_level,
-            "detected_by": detectors,
-        }
-        for text, attack_type, actual, predicted, score, risk_level, detectors in zip(
-            texts,
-            attack_types,
-            labels,
-            predictions,
-            scores,
-            risk_levels,
-            detected_by,
-        )
-        if attack_type in target_types
-    ]
-    write_dict_csv(report_dir / f"{mode}_korean_obfuscation_results.csv", rows)
 
 
 def _data_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -222,7 +114,7 @@ def _rule_score(risk_hint: str) -> float:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate a detector layer or full defense pipeline.")
     parser.add_argument("--mode", choices=["rule", "ml", "transformer", "full"], default="full")
-    parser.add_argument("--config", default="configs/ml.yaml")
+    parser.add_argument("--config", default="configs/runtime/ml.yaml")
     args = parser.parse_args()
     print(evaluate(args.mode, args.config))
 

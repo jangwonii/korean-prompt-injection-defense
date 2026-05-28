@@ -22,7 +22,7 @@ def load_config(path: str | Path) -> dict[str, Any]:
         return yaml.safe_load(config_file)
 
 
-def train(config_path: str | Path = "configs/ml.yaml") -> dict[str, Any]:
+def train(config_path: str | Path = "configs/runtime/ml.yaml") -> dict[str, Any]:
     config = load_config(config_path)
     seed = int(config.get("seed", 42))
     set_seed(seed)
@@ -221,7 +221,7 @@ Recall과 FNR을 핵심 위험 지표로 본다. 공개 데이터셋 holdout을 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train TF-IDF Logistic Regression detector.")
-    parser.add_argument("--config", default="configs/ml.yaml")
+    parser.add_argument("--config", default="configs/runtime/ml.yaml")
     args = parser.parse_args()
     result = train(args.config)
     print(result)

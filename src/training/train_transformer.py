@@ -17,7 +17,7 @@ def load_config(path: str | Path) -> dict[str, Any]:
         return yaml.safe_load(config_file)
 
 
-def train(config_path: str | Path = "configs/transformer.yaml") -> dict[str, Any]:
+def train(config_path: str | Path = "configs/runtime/transformer.yaml") -> dict[str, Any]:
     try:
         import numpy as np
         import torch
@@ -321,7 +321,7 @@ Transformer 계층은 rule/ML이 놓칠 수 있는 문맥 기반 우회 표현�
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train Transformer prompt injection detector.")
-    parser.add_argument("--config", default="configs/transformer.yaml")
+    parser.add_argument("--config", default="configs/runtime/transformer.yaml")
     args = parser.parse_args()
     result = train(args.config)
     print(result)

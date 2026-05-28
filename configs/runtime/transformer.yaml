@@ -1,0 +1,34 @@
+seed: 42
+
+data:
+  train_path: data/samples/prompt_injection_samples.csv
+  eval_paths:
+    - data/samples/prompt_injection_samples.csv
+    - data/samples/local_eval_extension.csv
+  test_size: 0.3
+  text_column: text
+  label_column: label
+  attack_type_column: attack_type
+
+model:
+  name: xlm-roberta-base
+  output_dir: models/xlm-roberta-prompt-injection
+  max_length: 256
+  threshold: 0.5
+
+transformer_policy:
+  positive_min_score: 65
+
+training:
+  learning_rate: 0.00002
+  num_train_epochs: 3
+  per_device_train_batch_size: 4
+  per_device_eval_batch_size: 4
+  weight_decay: 0.01
+  logging_steps: 10
+  save_strategy: epoch
+  evaluation_strategy: epoch
+  load_best_model_at_end: false
+
+reports:
+  output_dir: reports

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -14,13 +13,14 @@ from src.pipeline.normalizer import InputNormalizer
 from src.pipeline.risk_policy import RiskPolicy
 from src.pipeline.risk_signals import RiskSignals
 from src.pipeline.rule_detector import RuleBasedDetector
+from src.pipeline.schemas import PipelineDetectionResult
 from src.pipeline.transformer_detector import TransformerDetector
 
 
 class DefensePipeline:
     """Run the layered prompt injection defense pipeline."""
 
-    def __init__(self, config_path: str | Path = "configs/baseline.yaml") -> None:
+    def __init__(self, config_path: str | Path = "configs/runtime/baseline.yaml") -> None:
         self.config_path = Path(config_path)
         self.normalizer = InputNormalizer()
         self.rule_detector = RuleBasedDetector()
@@ -53,11 +53,11 @@ class DefensePipeline:
             transformer_result=transformer_result,
         )
 
-        return {
-            "input": normalized.original,
-            "normalized_input": normalized.normalized,
-            **asdict(decision),
-        }
+        return PipelineDetectionResult.from_decision(
+            normalized.original,
+            normalized.normalized,
+            decision,
+        ).to_dict()
 
     def _load_ml_detector(self, config_path: Path) -> MLDetector | None:
         with config_path.open("r", encoding="utf-8") as config_file:
