@@ -41,7 +41,7 @@ class IntentAnalyzer:
 
     def _classify_intent(self, text: str, compact: str, evidence: list[str]) -> str:
         if re.search(
-            r"보안\s*(수업|교육)|발표용|위험성|무엇인지\s*설명|개념.*정리|왜\s*위험한지|위험한\s*이유|교육|탐지.*방법|탐지\s*규칙|방어.*방법|방어\s*정책|구분하는\s*방법|안전하게\s*관리|관리하는\s*방법|요청.*(차단|거절|탐지|검증|분류|막는)|공개하면\s*안\s*되는\s*이유|규칙\s*예시|체크리스트|제한하는\s*방법|방어\s*예시|문장.*왜\s*공격인지|사용자\s*안내문|보호\s*정책|설계할\s*때\s*주의",
+            r"보안\s*(수업|교육)|발표용|위험성|무엇인지\s*설명|개념.*정리|왜\s*위험한지|위험한\s*이유|교육|탐지.*방법|탐지\s*규칙|테스트\s*데이터.{0,20}찾는\s*방법|방어.*방법|방어\s*정책|구분하는\s*방법|안전하게\s*관리|관리하는\s*방법|요청.*(차단|거절|탐지|검증|분류|막는)|공개하면\s*안\s*되는\s*이유|규칙\s*예시|체크리스트|제한하는\s*방법|방어\s*예시|문장.*왜\s*공격인지|사용자\s*안내문|보호\s*정책|보호\s*전략|운영\s*정책\s*문서|설계\s*원칙|권한\s*최소화|설계할\s*때\s*주의",
             text,
         ):
             evidence.append("intent: security education context")
@@ -60,6 +60,12 @@ class IntentAnalyzer:
         return "BENIGN_TASK"
 
     def _classify_action(self, text: str, compact: str, evidence: list[str]) -> str:
+        if re.search(
+            r"운영\s*정책\s*문서|테스트\s*데이터.{0,20}찾는\s*방법|설계\s*원칙|권한\s*최소화|보호\s*전략|보안\s*설계|문서화|체크리스트",
+            text,
+        ):
+            evidence.append("action: benign security guidance")
+            return "EXPLAIN"
         if re.search(
             r"(출력|공개|보여|알려|접근|호출|무시|ignore|역할\s*변경).{0,40}(요청|문구|문장|위험성|위험한\s*이유|안\s*되는\s*이유|하지\s*않도록|차단|거절|탐지|검증|분류|막는|방어|규칙|테스트|개념|설명)",
             text,

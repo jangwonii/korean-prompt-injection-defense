@@ -17,7 +17,7 @@
 | evaluation | accuracy | precision | recall | FPR | FNR |
 |---|---:|---:|---:|---:|---:|
 | rule-only sample/local | 0.8151 | 0.9623 | 0.7183 | 0.0417 | 0.2817 |
-| full sample/local calibrated | 0.9774 | 0.9639 | 1.0000 | 0.0566 | 0.0000 |
+| full sample/local calibrated | 0.9925 | 0.9877 | 1.0000 | 0.0189 | 0.0000 |
 | transformer korean 20ep test | 0.9992 | 0.9996 | 0.9994 | 0.0018 | 0.0006 |
 | synthetic rule+transformer | 0.9121 | 0.9869 | 0.8972 | 0.0392 | 0.1028 |
 | synthetic full with uncalibrated ML | 0.9674 | 0.9593 | 1.0000 | 0.1397 | 0.0000 |
