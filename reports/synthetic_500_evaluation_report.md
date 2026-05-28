@@ -132,6 +132,8 @@ Attack type별로는 모든 공격 유형에서 recall 1.0을 기록했다.
 - Full pipeline은 risk signals와 hierarchy guard로 미탐을 줄인다.
 - ML 포함 full pipeline은 공격 recall을 1.0까지 올리지만 hard negative 오탐이 증가한다.
 
+주의할 점은 기존 `full` 평가가 Rule/ML/Transformer 3 detector layer만의 평가는 아니라는 것이다. `full` mode는 risk signals, intent analyzer, hierarchy guard, canary guard, risk policy까지 포함한 전체 방어 파이프라인 평가다. strict한 Rule/ML/Transformer 조합 평가는 [layer_combination_evaluation.md](layer_combination_evaluation.md)에 별도로 정리했다.
+
 따라서 발표에서는 “단일 모델보다 다층 파이프라인이 필요하다”는 메시지를 명확히 보여줄 수 있다. 동시에 현업 적용을 위해서는 recall/FPR 균형 조정, 운영 정책 분리, human review 흐름이 필요하다는 한계도 드러난다.
 
 ## 현업 기준 개선 방향
