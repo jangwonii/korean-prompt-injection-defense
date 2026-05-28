@@ -29,12 +29,40 @@
 - FPR: 0.0018
 - FNR: 0.0006
 
+## Validation Evaluation
+
+Validation split 기준 별도 평가 결과:
+
+- Accuracy: 0.9965
+- Precision: 0.9959
+- Recall: 0.9964
+- F1: 0.9962
+- FPR: 0.0034
+- FNR: 0.0036
+- True Negative: 9036
+- False Positive: 31
+- False Negative: 27
+- True Positive: 7575
+
 ## Confusion Matrix
+
+Test split 기준 confusion matrix:
 
 - True Negative: 15655
 - False Positive: 29
 - False Negative: 40
 - True Positive: 68580
+
+## Attack Type Error Analysis
+
+Test split 기준 미탐이 남은 주요 attack type:
+
+- `CONTROL`: 5/5 false negative, recall 0.0000, FNR 1.0000
+- `JAILBREAK`: 11/50 false negative, recall 0.7800, FNR 0.2200
+- `PERSONA_REPLACEMENT`: 1/3 false negative, recall 0.6667, FNR 0.3333
+- `CONTEXT_CONFUSION`: 1/6 false negative, recall 0.8333, FNR 0.1667
+
+False positive는 29건이며, 일부는 데이터셋 라벨상 `BENIGN`이지만 ransomware, mail fraud, exploit, exam hacking 등 안전성 위험 요청을 포함한다. 따라서 단순 오탐으로만 보기보다 라벨 노이즈와 safety-risk 문장 혼입 가능성을 함께 검토해야 한다.
 
 ## 보안 관점 해석
 Transformer 계층은 rule/ML이 놓칠 수 있는 문맥 기반 우회 표현을 보완하기 위한 정밀 탐지 계층이다. 운영 기준은 Accuracy보다 Recall과 FNR을 우선한다.

@@ -64,6 +64,26 @@ Expected output:
 
 ## Test Results
 
+Validation split 기준 결과:
+
+| metric | value |
+| --- | ---: |
+| Accuracy | 0.9965 |
+| Precision | 0.9959 |
+| Recall | 0.9964 |
+| F1 | 0.9962 |
+| FPR | 0.0034 |
+| FNR | 0.0036 |
+
+Validation confusion matrix:
+
+| item | count |
+| --- | ---: |
+| True Negative | 9036 |
+| False Positive | 31 |
+| False Negative | 27 |
+| True Positive | 7575 |
+
 Test split 기준 결과:
 
 | metric | value |
@@ -83,6 +103,19 @@ Confusion matrix:
 | False Positive | 29 |
 | False Negative | 40 |
 | True Positive | 68580 |
+
+## Error Analysis
+
+Test split 기준 취약 attack type:
+
+| attack_type | samples | false_negative | recall | FNR |
+| --- | ---: | ---: | ---: | ---: |
+| CONTROL | 5 | 5 | 0.0000 | 1.0000 |
+| JAILBREAK | 50 | 11 | 0.7800 | 0.2200 |
+| PERSONA_REPLACEMENT | 3 | 1 | 0.6667 | 0.3333 |
+| CONTEXT_CONFUSION | 6 | 1 | 0.8333 | 0.1667 |
+
+False positive는 29건이다. 일부 false positive는 데이터셋 라벨상 `BENIGN`이지만 실제 내용은 ransomware, mail fraud, exploit, exam hacking 등 안전성 위험 요청을 포함해 라벨 노이즈 가능성이 있다.
 
 ## Notes
 
