@@ -60,6 +60,22 @@ class DefensePipeline:
             decision,
         ).to_dict()
 
+    def enabled_layers(self) -> list[str]:
+        layers = [
+            "normalizer",
+            "rule_based",
+            "risk_signals",
+            "intent_analyzer",
+            "hierarchy_guard",
+            "canary_guard",
+            "risk_policy",
+        ]
+        if self.ml_detector is not None:
+            layers.append("ml")
+        if self.transformer_detector is not None:
+            layers.append("transformer")
+        return layers
+
     def _load_ml_detector(self, config_path: Path) -> MLDetector | None:
         with config_path.open("r", encoding="utf-8") as config_file:
             config = yaml.safe_load(config_file) or {}
