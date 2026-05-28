@@ -159,6 +159,19 @@ $env:PIPELINE_CONFIG="configs/runtime/ml.yaml"
 .venv\Scripts\uvicorn src.api.main:app --reload
 ```
 
+시연용 웹 UI는 API 서버 실행 후 다음 주소에서 사용할 수 있습니다.
+
+```text
+http://127.0.0.1:8000/
+```
+
+발표 시연에서는 Transformer 계층까지 포함되도록 다음 설정을 권장합니다.
+
+```powershell
+$env:PIPELINE_CONFIG="configs/runtime/transformer.yaml"
+.venv\Scripts\uvicorn src.api.main:app --reload
+```
+
 ## API
 
 ### `GET /health`
