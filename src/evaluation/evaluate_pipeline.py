@@ -49,8 +49,14 @@ def evaluate(mode: str, config_path: str | Path) -> dict[str, float | int]:
         predictions = [result.prediction for result in results]
         detected_by = ["ml" if result.prediction else "" for result in results]
     elif mode == "transformer":
+        model_dir = Path(os.environ.get("TRANSFORMER_OUTPUT_DIR", config["model"]["output_dir"]))
+        if not model_dir.exists():
+            raise FileNotFoundError(
+                f"Transformer checkpoint not found: {model_dir}. "
+                "Train the transformer detector first or update model.output_dir in the config."
+            )
         detector = TransformerDetector(
-            os.environ.get("TRANSFORMER_OUTPUT_DIR", config["model"]["output_dir"]),
+            model_dir,
             threshold=float(config["model"]["threshold"]),
             max_length=int(config["model"]["max_length"]),
         )

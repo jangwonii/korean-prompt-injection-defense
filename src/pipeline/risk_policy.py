@@ -96,7 +96,15 @@ class RiskPolicy:
 
         score = max(rule_score, signal_score, semantic_score)
         if ml_result is not None and ml_result.prediction == 1:
-            score = max(score, ml_score, self._ml_positive_min_score())
+            ml_candidate_score = max(ml_score, self._ml_positive_min_score())
+            if not self._has_non_ml_detection(
+                rule_result,
+                signal_score,
+                semantic_score,
+                transformer_result,
+            ):
+                ml_candidate_score = min(ml_candidate_score, self._ml_positive_max_score_when_alone())
+            score = max(score, ml_candidate_score)
         if transformer_result is not None and transformer_result.prediction == 1:
             score = max(score, transformer_score, self._transformer_positive_min_score())
         if rule_result.matched and signal_score > 0:
@@ -185,6 +193,9 @@ class RiskPolicy:
 
     def _ml_positive_min_score(self) -> int:
         return int(self.config.get("ml_policy", {}).get("positive_min_score", self.config["thresholds"]["medium"]))
+
+    def _ml_positive_max_score_when_alone(self) -> int:
+        return int(self.config.get("ml_policy", {}).get("positive_max_score_when_alone", 100))
 
     def _transformer_positive_min_score(self) -> int:
         return int(
@@ -283,3 +294,17 @@ class RiskPolicy:
 
     def _has_critical_rule(self, rule_result: RuleDetectionResult) -> bool:
         return bool({"SYSTEM_PROMPT_EXTRACTION", "DATA_EXFILTRATION"} & set(rule_result.attack_types))
+
+    def _has_non_ml_detection(
+        self,
+        rule_result: RuleDetectionResult,
+        signal_score: int,
+        semantic_score: int,
+        transformer_result: TransformerDetectionResult | None,
+    ) -> bool:
+        return (
+            rule_result.matched
+            or signal_score >= self.config["thresholds"]["medium"]
+            or semantic_score >= self.config["thresholds"]["medium"]
+            or (transformer_result is not None and transformer_result.prediction == 1)
+        )

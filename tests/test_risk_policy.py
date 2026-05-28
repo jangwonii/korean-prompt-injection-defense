@@ -1,3 +1,7 @@
+from pathlib import Path
+
+import yaml
+
 from src.pipeline.defense_pipeline import DefensePipeline
 from src.pipeline.ml_detector import MLDetectionResult
 from src.pipeline.normalizer import InputNormalizer
@@ -74,6 +78,28 @@ def test_ml_positive_is_at_least_medium_risk() -> None:
     decision = RiskPolicy().decide(rule_result, signal_result, ml_result)
 
     assert decision.is_injection is True
+    assert decision.risk_level == "MEDIUM"
+    assert decision.recommended_action == "WARN"
+    assert "ml" in decision.detected_by
+
+
+def test_ml_positive_can_be_capped_when_it_is_the_only_signal(tmp_path: Path) -> None:
+    config = {
+        "ml_policy": {
+            "positive_min_score": 35,
+            "positive_max_score_when_alone": 45,
+        }
+    }
+    config_path = tmp_path / "policy.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+    normalized = InputNormalizer().normalize("오늘 회의록을 요약해줘.")
+    rule_result = RuleBasedDetector().detect(normalized)
+    signal_result = RiskSignals().analyze(normalized)
+    ml_result = MLDetectionResult(model="test_ml", score=0.99, prediction=1)
+
+    decision = RiskPolicy(config_path).decide(rule_result, signal_result, ml_result)
+
+    assert decision.risk_score == 45
     assert decision.risk_level == "MEDIUM"
     assert decision.recommended_action == "WARN"
     assert "ml" in decision.detected_by

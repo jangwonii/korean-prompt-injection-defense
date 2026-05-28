@@ -49,10 +49,12 @@ class HierarchyGuard:
             evidence.append("hierarchy: user requested developer/internal instructions")
         if safe_education_context and (references_system_context or references_developer_context):
             evidence.append("hierarchy: educational reference without protected-context request")
-        if intent_result.requested_action == "ACCESS_TOOL_OR_FILE":
+        if intent_result.requested_action == "ACCESS_TOOL_OR_FILE" and not safe_education_context:
             score += 35
             violated_level = "TOOL"
             evidence.append("hierarchy: user requested tool/file authority")
+        if intent_result.requested_action == "ACCESS_TOOL_OR_FILE" and safe_education_context:
+            evidence.append("hierarchy: educational tool/file authority reference")
         if intent_result.requested_action == "OVERRIDE_INSTRUCTIONS":
             score += 30
             if violated_level == "NONE":

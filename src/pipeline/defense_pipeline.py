@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -79,6 +80,12 @@ class DefensePipeline:
             return None
         path = Path(model_dir)
         if not path.exists():
+            warnings.warn(
+                f"Transformer checkpoint not found: {path}. "
+                "Transformer layer is disabled for this pipeline instance.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
             return None
         return TransformerDetector(
             path,

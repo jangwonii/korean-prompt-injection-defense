@@ -76,3 +76,10 @@ FNR만 최우선으로 보면 `rule+ml`과 `ml+transformer`가 모두 FN 0건, R
 2. ML은 현 checkpoint 기준 FPR이 너무 높으므로 즉시 차단 신호로 쓰지 않고 WARN/REVIEW 보조 신호로 둔다.
 3. 다음 작업은 ML threshold calibration 또는 ML 재학습이다. 목표는 Recall을 유지하면서 FPR을 낮추는 것이다.
 4. `OBFUSCATED_KOREAN_ATTACK`, `DATA_EXFILTRATION`, `ROLE_PLAY_ATTACK`, `TOOL_MISUSE` 미탐 샘플을 hard positive로 보강해 Transformer 재학습 데이터에 추가한다.
+
+## 반영된 정책 변경
+
+- `configs/runtime/transformer.yaml`은 실제 학습 완료 checkpoint인 `models/distilbert-multilingual-prompt-injection-korean-20ep`를 기본값으로 사용한다.
+- `configs/runtime/ml.yaml`은 threshold sweep을 활성화해 ML 운영점을 리포트로 남긴다.
+- Risk policy는 config의 `ml_policy.positive_max_score_when_alone` 값을 통해 ML 단독 positive가 과도한 차단 점수로 승격되지 않게 제한할 수 있다.
+- Hard-case local evaluation set에는 한국어 난독화, 데이터 유출, 역할극, 도구 악용 positive와 보안 교육 hard negative를 추가한다.
