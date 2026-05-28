@@ -20,6 +20,7 @@ def load_config(path: str | Path) -> dict[str, Any]:
 def train(config_path: str | Path = "configs/transformer.yaml") -> dict[str, Any]:
     try:
         import numpy as np
+        import torch
         from datasets import Dataset
         from transformers import (
             AutoModelForSequenceClassification,
@@ -43,6 +44,11 @@ def train(config_path: str | Path = "configs/transformer.yaml") -> dict[str, Any
     training_config = config["training"]
     report_dir = Path(config["reports"]["output_dir"])
     report_dir.mkdir(parents=True, exist_ok=True)
+    if bool(training_config.get("require_cuda", False)) and not torch.cuda.is_available():
+        raise RuntimeError(
+            "This training config requires CUDA, but torch.cuda.is_available() is false. "
+            "Install a CUDA-enabled PyTorch build and run on a GPU machine."
+        )
 
     train_data = load_csv_datasets(
         _config_paths(data_config, "train_paths", "train_path"),

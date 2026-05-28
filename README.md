@@ -109,6 +109,15 @@ py -3.11 -m venv .venv
 - `reports/transformer_korean_obfuscation_results.csv`
 - `reports/transformer_experiment_report.md`
 
+GPU 환경에서 한국어 공개 guardrail 데이터까지 포함한 20 epoch 학습을 실행하려면 다음 순서로 진행합니다.
+
+```powershell
+.venv\Scripts\python -m src.data.build_transformer_dataset --output-dir data/processed/transformer_multi_source_korean_20ep --max-korean-safe-per-split 50000
+.venv\Scripts\python -m src.training.train_transformer --config configs/transformer_korean_gpu_20ep.yaml
+```
+
+`configs/transformer_korean_gpu_20ep.yaml`는 `training.require_cuda: true`로 설정되어 있어 CUDA GPU가 없으면 CPU로 fallback하지 않고 중단합니다.
+
 ## Evaluate
 
 ```powershell
