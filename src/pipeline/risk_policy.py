@@ -15,7 +15,7 @@ from src.pipeline.risk_signals import RiskSignalsResult
 from src.pipeline.transformer_detector import TransformerDetectionResult
 
 
-DEFAULT_CONFIG_PATH = Path("configs/baseline.yaml")
+DEFAULT_CONFIG_PATH = Path("configs/runtime/baseline.yaml")
 
 
 @dataclass(frozen=True)

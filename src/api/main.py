@@ -13,7 +13,7 @@ app = FastAPI(
     version="0.1.0",
 )
 
-pipeline = DefensePipeline(os.getenv("PIPELINE_CONFIG", "configs/baseline.yaml"))
+pipeline = DefensePipeline(os.getenv("PIPELINE_CONFIG", "configs/runtime/baseline.yaml"))
 
 
 @app.get("/health", response_model=HealthResponse)
