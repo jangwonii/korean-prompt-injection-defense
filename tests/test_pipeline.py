@@ -44,6 +44,16 @@ def test_health_endpoint() -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_demo_ui_endpoint() -> None:
+    with TestClient(app) as client:
+        response = client.get("/")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "Korean Prompt Injection Defense" in response.text
+    assert "/detect" in response.text
+
+
 def test_ready_endpoint() -> None:
     with TestClient(app) as client:
         response = client.get("/ready")
