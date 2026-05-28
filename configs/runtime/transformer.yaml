@@ -11,22 +11,26 @@ data:
   attack_type_column: attack_type
 
 model:
-  name: xlm-roberta-base
-  output_dir: models/xlm-roberta-prompt-injection
-  max_length: 256
+  name: distilbert-base-multilingual-cased
+  output_dir: models/distilbert-multilingual-prompt-injection-korean-20ep
+  max_length: 128
   threshold: 0.5
+  freeze_base_model: false
 
 transformer_policy:
   positive_min_score: 65
 
 training:
+  require_cuda: true
   learning_rate: 0.00002
-  num_train_epochs: 3
-  per_device_train_batch_size: 4
-  per_device_eval_batch_size: 4
+  num_train_epochs: 20
+  per_device_train_batch_size: 32
+  per_device_eval_batch_size: 64
+  gradient_accumulation_steps: 1
+  fp16: true
   weight_decay: 0.01
-  logging_steps: 10
-  save_strategy: epoch
+  logging_steps: 100
+  save_strategy: "no"
   evaluation_strategy: epoch
   load_best_model_at_end: false
 

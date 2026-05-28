@@ -12,9 +12,10 @@ from src.pipeline.intent_analyzer import IntentAnalysisResult
 from src.pipeline.ml_detector import MLDetectionResult
 from src.pipeline.rule_detector import RuleDetectionResult
 from src.pipeline.risk_signals import RiskSignalsResult
+from src.pipeline.transformer_detector import TransformerDetectionResult
 
 
-DEFAULT_CONFIG_PATH = Path("configs/baseline.yaml")
+DEFAULT_CONFIG_PATH = Path("configs/runtime/baseline.yaml")
 
 
 @dataclass(frozen=True)
@@ -48,6 +49,7 @@ class RiskPolicy:
         intent_result: IntentAnalysisResult | None = None,
         hierarchy_result: HierarchyGuardResult | None = None,
         canary_result: CanaryGuardResult | None = None,
+        transformer_result: TransformerDetectionResult | None = None,
     ) -> RiskDecision:
         intent_result = intent_result or self._default_intent_result()
         hierarchy_result = hierarchy_result or self._default_hierarchy_result()
@@ -74,6 +76,13 @@ class RiskPolicy:
             if ml_result.prediction == 1:
                 detected_by.append("ml")
 
+        transformer_score = self._transformer_score(transformer_result)
+        if transformer_result is not None:
+            evidence.append(f"transformer_score: {transformer_result.score:.4f}")
+            evidence.append(f"transformer_prediction: {transformer_result.prediction}")
+            if transformer_result.prediction == 1:
+                detected_by.append("transformer")
+
         semantic_score = self._semantic_score(intent_result, hierarchy_result, canary_result)
         if intent_result.risk_score >= 35:
             detected_by.append("intent_analyzer")
@@ -87,7 +96,17 @@ class RiskPolicy:
 
         score = max(rule_score, signal_score, semantic_score)
         if ml_result is not None and ml_result.prediction == 1:
-            score = max(score, ml_score, self._ml_positive_min_score())
+            ml_candidate_score = max(ml_score, self._ml_positive_min_score())
+            if not self._has_non_ml_detection(
+                rule_result,
+                signal_score,
+                semantic_score,
+                transformer_result,
+            ):
+                ml_candidate_score = min(ml_candidate_score, self._ml_positive_max_score_when_alone())
+            score = max(score, ml_candidate_score)
+        if transformer_result is not None and transformer_result.prediction == 1:
+            score = max(score, transformer_score, self._transformer_positive_min_score())
         if rule_result.matched and signal_score > 0:
             score = min(100, score + 10)
         if hierarchy_result.hierarchy_violation and rule_result.matched:
@@ -101,7 +120,7 @@ class RiskPolicy:
             and not hierarchy_result.hierarchy_violation
             and not canary_result.canary_triggered
         ):
-            score = max(0, score - 30)
+            score = max(0, score - 35)
 
         level = self._risk_level(score)
         action = self.config["actions"][level]
@@ -167,8 +186,24 @@ class RiskPolicy:
             return 0
         return max(0, min(100, round(ml_result.score * 100)))
 
+    def _transformer_score(self, transformer_result: TransformerDetectionResult | None) -> int:
+        if transformer_result is None:
+            return 0
+        return max(0, min(100, round(transformer_result.score * 100)))
+
     def _ml_positive_min_score(self) -> int:
         return int(self.config.get("ml_policy", {}).get("positive_min_score", self.config["thresholds"]["medium"]))
+
+    def _ml_positive_max_score_when_alone(self) -> int:
+        return int(self.config.get("ml_policy", {}).get("positive_max_score_when_alone", 100))
+
+    def _transformer_positive_min_score(self) -> int:
+        return int(
+            self.config.get("transformer_policy", {}).get(
+                "positive_min_score",
+                self.config["thresholds"]["high"],
+            )
+        )
 
     def _semantic_score(
         self,
@@ -259,3 +294,17 @@ class RiskPolicy:
 
     def _has_critical_rule(self, rule_result: RuleDetectionResult) -> bool:
         return bool({"SYSTEM_PROMPT_EXTRACTION", "DATA_EXFILTRATION"} & set(rule_result.attack_types))
+
+    def _has_non_ml_detection(
+        self,
+        rule_result: RuleDetectionResult,
+        signal_score: int,
+        semantic_score: int,
+        transformer_result: TransformerDetectionResult | None,
+    ) -> bool:
+        return (
+            rule_result.matched
+            or signal_score >= self.config["thresholds"]["medium"]
+            or semantic_score >= self.config["thresholds"]["medium"]
+            or (transformer_result is not None and transformer_result.prediction == 1)
+        )

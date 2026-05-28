@@ -1,0 +1,10 @@
+data:
+  eval_paths:
+    - data/processed/synthetic_500_eval.csv
+  text_column: text
+  label_column: label
+  attack_type_column: attack_type
+
+reports:
+  output_dir: reports
+  experiment_name: synthetic_500_no_ml
