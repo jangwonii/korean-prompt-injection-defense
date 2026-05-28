@@ -68,6 +68,13 @@ py -3.11 -m venv .venv
 .venv\Scripts\python -m src.data.preprocess --config configs/baseline.yaml
 ```
 
+`configs/baseline.yaml`, `configs/ml.yaml`, `configs/transformer.yaml`는 평가 시 기본 샘플과 로컬 확장 샘플을 함께 읽도록 `data.eval_paths`를 사용합니다. 기존처럼 단일 `data.train_path`만 둔 config도 계속 지원합니다.
+
+로컬 확장 샘플:
+
+- `data/samples/prompt_injection_samples.csv`: 기본 synthetic sample
+- `data/samples/local_eval_extension.csv`: hard negative, 완곡한 우회 표현, 한영 혼합, 한국어 난독화 평가 샘플
+
 ## Train Classical ML Detector
 
 ```powershell
@@ -102,9 +109,19 @@ py -3.11 -m venv .venv
 - `reports/transformer_korean_obfuscation_results.csv`
 - `reports/transformer_experiment_report.md`
 
+GPU 환경에서 한국어 공개 guardrail 데이터까지 포함한 20 epoch 학습을 실행하려면 다음 순서로 진행합니다.
+
+```powershell
+.venv\Scripts\python -m src.data.build_transformer_dataset --output-dir data/processed/transformer_multi_source_korean_20ep --max-korean-safe-per-split 50000
+.venv\Scripts\python -m src.training.train_transformer --config configs/transformer_korean_gpu_20ep.yaml
+```
+
+`configs/transformer_korean_gpu_20ep.yaml`는 `training.require_cuda: true`로 설정되어 있어 CUDA GPU가 없으면 CPU로 fallback하지 않고 중단합니다.
+
 ## Evaluate
 
 ```powershell
+.venv\Scripts\python -m src.data.build_korean_obfuscation --input data/samples/prompt_injection_samples.csv --output data/processed/korean_obfuscation.csv
 .venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode rule --config configs/baseline.yaml
 .venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode ml --config configs/ml.yaml
 .venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode transformer --config configs/transformer.yaml
@@ -113,6 +130,15 @@ py -3.11 -m venv .venv
 ```
 
 `rule`과 `configs/baseline.yaml` 기반 `full` 평가는 학습된 모델 없이 실행할 수 있습니다. `ml`과 `configs/ml.yaml` 기반 `full` 평가는 `models/tfidf_logistic_regression.joblib`이 필요합니다. `transformer` 평가는 `models/xlm-roberta-prompt-injection/`이 필요합니다.
+
+평가 산출물은 모드별로 다음 파일을 저장합니다.
+
+- `{mode}_metrics_summary.csv`
+- `{mode}_confusion_matrix.csv`
+- `{mode}_attack_type_metrics.csv`
+- `{mode}_false_positives.csv`
+- `{mode}_false_negatives.csv`
+- `{mode}_korean_obfuscation_results.csv`
 
 ## Run API
 

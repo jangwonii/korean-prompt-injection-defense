@@ -11,7 +11,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 
-from src.data.load_datasets import load_csv_dataset
+from src.data.load_datasets import load_csv_datasets
 from src.evaluation.metrics import compute_binary_metrics, write_confusion_matrix, write_dict_csv
 from src.pipeline.normalizer import InputNormalizer
 from src.utils.seed import set_seed
@@ -33,17 +33,18 @@ def train(config_path: str | Path = "configs/ml.yaml") -> dict[str, Any]:
     report_dir.mkdir(parents=True, exist_ok=True)
     normalizer = InputNormalizer()
 
-    train_dataset = load_csv_dataset(
-        data_config["train_path"],
+    train_paths = _config_paths(data_config, "train_paths", "train_path")
+    train_dataset = load_csv_datasets(
+        train_paths,
         data_config["text_column"],
         data_config["label_column"],
         data_config["attack_type_column"],
     )
 
-    eval_path = data_config.get("eval_path") or data_config.get("test_path")
-    if eval_path:
-        eval_dataset = load_csv_dataset(
-            eval_path,
+    eval_paths = _optional_config_paths(data_config, "eval_paths", "eval_path", "test_path")
+    if eval_paths:
+        eval_dataset = load_csv_datasets(
+            eval_paths,
             data_config["text_column"],
             data_config["label_column"],
             data_config["attack_type_column"],
@@ -141,8 +142,8 @@ def train(config_path: str | Path = "configs/ml.yaml") -> dict[str, Any]:
         model_config["name"],
         metrics_row,
         model_path,
-        train_path=data_config["train_path"],
-        eval_path=eval_path or f"random {data_config['test_size']} split from train_path",
+        train_path=", ".join(train_paths),
+        eval_path=", ".join(eval_paths) if eval_paths else f"random {data_config['test_size']} split from train_path",
         train_size=len(train_texts),
         eval_size=len(test_texts),
     )
@@ -151,6 +152,24 @@ def train(config_path: str | Path = "configs/ml.yaml") -> dict[str, Any]:
 
 def _normalize_texts(texts: list[str], normalizer: InputNormalizer) -> list[str]:
     return [normalizer.normalize(text).normalized for text in texts]
+
+
+def _config_paths(config: dict[str, Any], list_key: str, single_key: str) -> list[str]:
+    value = config.get(list_key, config[single_key])
+    if isinstance(value, list):
+        return [str(path) for path in value]
+    return [str(value)]
+
+
+def _optional_config_paths(config: dict[str, Any], *keys: str) -> list[str]:
+    for key in keys:
+        if key not in config:
+            continue
+        value = config[key]
+        if isinstance(value, list):
+            return [str(path) for path in value]
+        return [str(value)]
+    return []
 
 
 def write_report(
