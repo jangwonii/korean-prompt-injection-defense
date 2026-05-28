@@ -62,7 +62,7 @@ class CanaryGuard:
     def _is_educational_reference(self, text: str) -> bool:
         return bool(
             re.search(
-                r"개념|교육|수업|발표용|무엇인지\s*설명|왜\s*위험한지|위험한\s*이유|방어.*방법|요청.*막는|설계할\s*때\s*주의",
+                r"개념|교육|수업|발표용|무엇인지\s*설명|왜\s*위험한지|위험한\s*이유|방어.*방법|방어\s*절차|탐지.*(절차|방법)|문서화|체크리스트|요청.*막는|설계할\s*때\s*주의",
                 text,
             )
         )

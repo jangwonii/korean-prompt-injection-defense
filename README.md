@@ -19,22 +19,22 @@
 
 학습된 Classical ML 모델이 있으면 `DefensePipeline`이 자동으로 해당 계층을 실행해 `detected_by`와 `evidence`에 ML 판단 근거를 포함합니다. 현재 저장된 ML checkpoint는 `models/tfidf_logistic_regression.joblib`이며, `reports/metrics_summary.csv`와 `reports/experiment_report.md`에 학습 결과가 남아 있습니다.
 
-Transformer 계층은 학습/추론 코드와 파이프라인 연결부가 준비되어 있습니다. `configs/runtime/transformer.yaml`의 `model.output_dir`에 fine-tuned checkpoint가 존재하면 `DefensePipeline`이 자동으로 Transformer 판단 근거를 최종 정책에 반영합니다.
+Transformer 계층은 학습/추론 코드와 파이프라인 연결부가 준비되어 있습니다. 현재 runtime 기준 checkpoint는 `models/distilbert-multilingual-prompt-injection-korean-20ep`이며, `configs/runtime/transformer.yaml`의 `model.output_dir`에 checkpoint가 존재하면 `DefensePipeline`이 자동으로 Transformer 판단 근거를 최종 정책에 반영합니다.
 
 ## Current Status
 
 - Phase 1 Baseline Pipeline: 완료
-- Phase 2 Classical ML: 초기 학습 및 리포트 생성 완료
-- Phase 3 Transformer: 학습 코드와 선택적 파이프라인 연결 완료, checkpoint 학습 필요
-- Phase 4 Korean Obfuscation: 생성 스크립트와 `data/processed/korean_obfuscation.csv` 산출물 준비
-- Phase 5 Final Report: 현재 리포트는 sample dataset 기준이며, 공개 데이터셋 확장 후 보강 필요
+- Phase 2 Classical ML: 초기 학습 및 리포트 생성 완료, threshold calibration 지원
+- Phase 3 Transformer: `distilbert-base-multilingual-cased` 기반 한국어 확장 checkpoint 학습 및 평가 완료
+- Phase 4 Korean Obfuscation: 생성 스크립트와 hard-case 평가 샘플 준비
+- Phase 5 Final Report: rule-only, rule+transformer, full calibrated pipeline 기준으로 정리 중
 
 ## Next Development Plan
 
-1. 공개 prompt injection dataset과 한국어 확장 데이터를 통합한다.
-2. Hard negative 정상 보안 문장을 늘려 ML/Transformer 오탐을 줄인다.
-3. Transformer checkpoint를 학습하고 `full` 평가에 연결한다.
-4. threshold sweep을 추가해 Recall/FNR 우선 운영점을 선택한다.
+1. ML threshold sweep 결과를 기준으로 FPR을 통제하는 운영점을 선택한다.
+2. Rule + Transformer 조합을 고위험 차단 판단의 핵심 기준으로 유지한다.
+3. ML 계층은 FPR이 높은 checkpoint에서는 즉시 차단 신호가 아니라 WARN/REVIEW 보조 신호로 사용한다.
+4. 잔여 미탐 유형인 한국어 난독화, 데이터 유출, 역할극, 도구 악용 샘플을 계속 보강한다.
 5. `experiment_report.md`를 계층별 성능, 오탐/미탐, 한국어 우회형 결과 중심으로 확장한다.
 
 ## Branch Strategy
@@ -101,11 +101,11 @@ runtime config는 평가 시 기본 샘플과 로컬 확장 샘플을 함께 읽
 .venv\Scripts\python -m src.training.train_transformer --config configs/runtime/transformer.yaml
 ```
 
-기본 모델은 `xlm-roberta-base`입니다. GPU가 있으면 자동으로 학습 속도가 개선되고, CPU 환경에서는 작은 샘플 검증 또는 외부 GPU/Colab 실행을 권장합니다.
+runtime 기준 모델은 `distilbert-base-multilingual-cased`이며, 기본 checkpoint 경로는 `models/distilbert-multilingual-prompt-injection-korean-20ep`입니다. GPU 환경에서 학습한 checkpoint가 없으면 Transformer 평가와 Transformer 포함 full 평가는 먼저 학습을 수행하거나 config의 `model.output_dir`를 실제 checkpoint로 수정해야 합니다.
 
 생성 결과:
 
-- `models/xlm-roberta-prompt-injection/`
+- `models/distilbert-multilingual-prompt-injection-korean-20ep/`
 - `reports/transformer_metrics_summary.csv`
 - `reports/transformer_confusion_matrix.csv`
 - `reports/transformer_false_positives.csv`
@@ -133,7 +133,9 @@ GPU 환경에서 한국어 공개 guardrail 데이터까지 포함한 20 epoch �
 .venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode full --config configs/runtime/ml.yaml
 ```
 
-`rule`과 `configs/runtime/baseline.yaml` 기반 `full` 평가는 학습된 모델 없이 실행할 수 있습니다. `ml`과 `configs/runtime/ml.yaml` 기반 `full` 평가는 `models/tfidf_logistic_regression.joblib`이 필요합니다. `transformer` 평가는 `models/xlm-roberta-prompt-injection/`이 필요합니다.
+`rule`과 `configs/runtime/baseline.yaml` 기반 `full` 평가는 학습된 모델 없이 실행할 수 있습니다. `ml`과 `configs/runtime/ml.yaml` 기반 `full` 평가는 `models/tfidf_logistic_regression.joblib`이 필요합니다. `transformer` 평가는 `models/distilbert-multilingual-prompt-injection-korean-20ep/`이 필요합니다.
+
+`configs/runtime/ml.yaml`은 threshold sweep을 활성화해 `reports/ml_threshold_sweep.csv`를 생성합니다. 현재 ML 계층은 Recall/FNR 보조 신호로 유용하지만 FPR이 높을 수 있으므로, 운영 차단 판단은 rule+transformer와 risk policy를 우선합니다.
 
 평가 산출물은 모드별로 다음 파일을 저장합니다.
 

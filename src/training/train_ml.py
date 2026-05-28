@@ -90,7 +90,12 @@ def train(config_path: str | Path = "configs/runtime/ml.yaml") -> dict[str, Any]
     pipeline.fit(train_texts, y_train)
 
     probabilities = pipeline.predict_proba(test_texts)[:, 1]
-    threshold = float(model_config["threshold"])
+    threshold_rows = _threshold_sweep(y_test, probabilities, model_config.get("calibration", {}))
+    threshold = _select_threshold(
+        threshold_rows,
+        float(model_config["threshold"]),
+        model_config.get("calibration", {}),
+    )
     predictions = [1 if probability >= threshold else 0 for probability in probabilities]
     metrics = compute_binary_metrics(y_test, predictions)
 
@@ -108,6 +113,8 @@ def train(config_path: str | Path = "configs/runtime/ml.yaml") -> dict[str, Any]
 
     metrics_row = {"model": model_config["name"], "threshold": threshold, **metrics}
     write_dict_csv(report_dir / "metrics_summary.csv", [metrics_row])
+    if threshold_rows:
+        write_dict_csv(report_dir / "ml_threshold_sweep.csv", threshold_rows)
     write_confusion_matrix(report_dir / "confusion_matrix.csv", metrics)
 
     error_rows = []
@@ -205,6 +212,7 @@ def write_report(
 
 ## 보안 관점 해석
 Recall과 FNR을 핵심 위험 지표로 본다. 공개 데이터셋 holdout을 사용할 때는 `eval_path`를 기준으로 성능을 해석하고, sample dataset 결과는 smoke/regression 확인으로만 사용한다.
+ML 계층은 단독 차단 판단자가 아니라 rule/transformer/risk policy를 보조하는 경량 신호로 사용한다. Threshold sweep 결과가 있으면 `ml_threshold_sweep.csv`에서 FPR 통제 조건과 Recall 유지 여부를 함께 확인한다.
 
 ## 한계점
 - 현재 공개 데이터셋은 영어 중심이므로 한국어 운영 성능을 직접 대표하지 않는다.
@@ -217,6 +225,60 @@ Recall과 FNR을 핵심 위험 지표로 본다. 공개 데이터셋 holdout을 
 - attack-type별 recall/FNR 리포트 추가
 """
     path.write_text(content, encoding="utf-8")
+
+
+def _threshold_sweep(
+    y_true: list[int],
+    probabilities: Any,
+    calibration_config: dict[str, Any],
+) -> list[dict[str, Any]]:
+    if not calibration_config.get("enabled", False):
+        return []
+
+    min_threshold = float(calibration_config.get("min_threshold", 0.1))
+    max_threshold = float(calibration_config.get("max_threshold", 0.95))
+    step = float(calibration_config.get("step", 0.05))
+    if step <= 0:
+        raise ValueError("model.calibration.step must be greater than 0")
+
+    rows: list[dict[str, Any]] = []
+    threshold = min_threshold
+    while threshold <= max_threshold + 1e-9:
+        rounded_threshold = round(threshold, 4)
+        predictions = [1 if probability >= rounded_threshold else 0 for probability in probabilities]
+        metrics = compute_binary_metrics(y_true, predictions)
+        rows.append({"threshold": rounded_threshold, **metrics})
+        threshold += step
+    return rows
+
+
+def _select_threshold(
+    threshold_rows: list[dict[str, Any]],
+    fallback_threshold: float,
+    calibration_config: dict[str, Any],
+) -> float:
+    if not threshold_rows:
+        return fallback_threshold
+
+    max_fpr = float(calibration_config.get("max_fpr", 1.0))
+    min_recall = float(calibration_config.get("min_recall", 0.0))
+    candidates = [
+        row for row in threshold_rows if float(row["fpr"]) <= max_fpr and float(row["recall"]) >= min_recall
+    ]
+    if not candidates:
+        candidates = threshold_rows
+
+    selected = max(
+        candidates,
+        key=lambda row: (
+            float(row["recall"]),
+            -float(row["fnr"]),
+            -float(row["fpr"]),
+            float(row["f1"]),
+            float(row["threshold"]),
+        ),
+    )
+    return float(selected["threshold"])
 
 
 def main() -> None:
