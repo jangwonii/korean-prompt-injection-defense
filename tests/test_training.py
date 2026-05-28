@@ -25,14 +25,6 @@ def test_train_ml_writes_model_and_reports(tmp_path: Path) -> None:
             "ngram_range": [1, 2],
             "class_weight": "balanced",
             "threshold": 0.45,
-            "calibration": {
-                "enabled": True,
-                "min_threshold": 0.2,
-                "max_threshold": 0.8,
-                "step": 0.2,
-                "max_fpr": 0.5,
-                "min_recall": 0.8,
-            },
         },
         "reports": {"output_dir": str(tmp_path / "reports")},
     }
@@ -45,7 +37,6 @@ def test_train_ml_writes_model_and_reports(tmp_path: Path) -> None:
 
     assert Path(result["model_path"]).exists()
     assert (tmp_path / "reports" / "metrics_summary.csv").exists()
-    assert (tmp_path / "reports" / "ml_threshold_sweep.csv").exists()
     assert prediction.prediction == 1
 
     pipeline = DefensePipeline(config_path)
@@ -75,8 +66,6 @@ def test_evaluate_full_pipeline_returns_security_metrics(tmp_path: Path) -> None
     assert "recall" in metrics
     assert "fnr" in metrics
     assert (tmp_path / "reports" / "full_metrics_summary.csv").exists()
-    assert (tmp_path / "reports" / "full_attack_type_metrics.csv").exists()
-    assert (tmp_path / "reports" / "full_korean_obfuscation_results.csv").exists()
 
 
 def test_evaluate_rule_pipeline_returns_security_metrics(tmp_path: Path) -> None:
@@ -97,5 +86,3 @@ def test_evaluate_rule_pipeline_returns_security_metrics(tmp_path: Path) -> None
     assert "recall" in metrics
     assert "fnr" in metrics
     assert (tmp_path / "reports" / "rule_metrics_summary.csv").exists()
-    assert (tmp_path / "reports" / "rule_attack_type_metrics.csv").exists()
-    assert (tmp_path / "reports" / "rule_korean_obfuscation_results.csv").exists()

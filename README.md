@@ -17,25 +17,7 @@
 - FastAPI `/detect`, `/health`
 - pytest 기반 기본 테스트
 
-학습된 Classical ML 모델이 있으면 `DefensePipeline`이 자동으로 해당 계층을 실행해 `detected_by`와 `evidence`에 ML 판단 근거를 포함합니다. 현재 저장된 ML checkpoint는 `models/tfidf_logistic_regression.joblib`이며, `reports/metrics_summary.csv`와 `reports/experiment_report.md`에 학습 결과가 남아 있습니다.
-
-Transformer 계층은 학습/추론 코드와 파이프라인 연결부가 준비되어 있습니다. 현재 runtime 기준 checkpoint는 `models/distilbert-multilingual-prompt-injection-korean-20ep`이며, `configs/runtime/transformer.yaml`의 `model.output_dir`에 checkpoint가 존재하면 `DefensePipeline`이 자동으로 Transformer 판단 근거를 최종 정책에 반영합니다.
-
-## Current Status
-
-- Phase 1 Baseline Pipeline: 완료
-- Phase 2 Classical ML: 초기 학습 및 리포트 생성 완료, threshold calibration 지원
-- Phase 3 Transformer: `distilbert-base-multilingual-cased` 기반 한국어 확장 checkpoint 학습 및 평가 완료
-- Phase 4 Korean Obfuscation: 생성 스크립트와 hard-case 평가 샘플 준비
-- Phase 5 Final Report: rule-only, rule+transformer, full calibrated pipeline 기준으로 정리 중
-
-## Next Development Plan
-
-1. ML threshold sweep 결과를 기준으로 FPR을 통제하는 운영점을 선택한다.
-2. Rule + Transformer 조합을 고위험 차단 판단의 핵심 기준으로 유지한다.
-3. ML 계층은 FPR이 높은 checkpoint에서는 즉시 차단 신호가 아니라 WARN/REVIEW 보조 신호로 사용한다.
-4. 잔여 미탐 유형인 한국어 난독화, 데이터 유출, 역할극, 도구 악용 샘플을 계속 보강한다.
-5. `experiment_report.md`를 계층별 성능, 오탐/미탐, 한국어 우회형 결과 중심으로 확장한다.
+학습된 Classical ML 모델이 있으면 `DefensePipeline`이 자동으로 해당 계층을 실행해 `detected_by`와 `evidence`에 ML 판단 근거를 포함합니다. Transformer 계층은 학습/추론 코드가 준비되어 있으며 다음 단계에서 같은 출력 계약에 연결합니다.
 
 ## Branch Strategy
 
@@ -45,7 +27,7 @@ Transformer 계층은 학습/추론 코드와 파이프라인 연결부가 준�
 
 작업은 `develop`에서 feature 브랜치를 따서 진행하고, 테스트 통과 후 PR로 `develop`에 머지합니다. `main`은 안정 버전만 PR로 병합합니다.
 
-이 규칙은 모든 일반 개발 작업에 계속 적용합니다. 직접 `main`이나 `develop`에 커밋하지 않고, 기능/실험/문서 단위로 `feature/*` 브랜치를 만든 뒤 PR로 `develop`에 반영합니다. 자세한 GitHub 운영 규칙과 단계별 커밋 계획은 [docs/git-workflow.md](docs/git-workflow.md)를 참고하세요.
+자세한 GitHub 운영 규칙과 단계별 커밋 계획은 [docs/git-workflow.md](docs/git-workflow.md)를 참고하세요.
 
 ## Setup
 
@@ -65,24 +47,13 @@ py -3.11 -m venv .venv
 ## Validate Dataset
 
 ```powershell
-.venv\Scripts\python -m src.data.preprocess --config configs/runtime/baseline.yaml
+.venv\Scripts\python -m src.data.preprocess --config configs/baseline.yaml
 ```
-
-`configs/runtime/baseline.yaml`, `configs/runtime/ml.yaml`, `configs/runtime/transformer.yaml`는 API와 기본 평가용 runtime config입니다. repository root의 `configs/baseline.yaml`, `configs/ml.yaml`, `configs/transformer.yaml`는 기존 명령어 호환을 위해 유지합니다.
-
-실험별 config는 `configs/experiments/` 아래에 둡니다. `reports.experiment_name`이 있는 config는 결과를 `reports/experiments/<experiment_name>/`에 저장하고, 기존처럼 `reports.output_dir`만 있는 config는 해당 디렉터리에 바로 저장합니다.
-
-runtime config는 평가 시 기본 샘플과 로컬 확장 샘플을 함께 읽도록 `data.eval_paths`를 사용합니다. 기존처럼 단일 `data.train_path`만 둔 config도 계속 지원합니다.
-
-로컬 확장 샘플:
-
-- `data/samples/prompt_injection_samples.csv`: 기본 synthetic sample
-- `data/samples/local_eval_extension.csv`: hard negative, 완곡한 우회 표현, 한영 혼합, 한국어 난독화 평가 샘플
 
 ## Train Classical ML Detector
 
 ```powershell
-.venv\Scripts\python -m src.training.train_ml --config configs/runtime/ml.yaml
+.venv\Scripts\python -m src.training.train_ml --config configs/ml.yaml
 ```
 
 생성 결과:
@@ -98,14 +69,14 @@ runtime config는 평가 시 기본 샘플과 로컬 확장 샘플을 함께 읽
 ## Train Transformer Detector
 
 ```powershell
-.venv\Scripts\python -m src.training.train_transformer --config configs/runtime/transformer.yaml
+.venv\Scripts\python -m src.training.train_transformer --config configs/transformer.yaml
 ```
 
-runtime 기준 모델은 `distilbert-base-multilingual-cased`이며, 기본 checkpoint 경로는 `models/distilbert-multilingual-prompt-injection-korean-20ep`입니다. GPU 환경에서 학습한 checkpoint가 없으면 Transformer 평가와 Transformer 포함 full 평가는 먼저 학습을 수행하거나 config의 `model.output_dir`를 실제 checkpoint로 수정해야 합니다.
+기본 모델은 `xlm-roberta-base`입니다. GPU가 있으면 자동으로 학습 속도가 개선되고, CPU 환경에서는 작은 샘플 검증 또는 외부 GPU/Colab 실행을 권장합니다.
 
 생성 결과:
 
-- `models/distilbert-multilingual-prompt-injection-korean-20ep/`
+- `models/xlm-roberta-prompt-injection/`
 - `reports/transformer_metrics_summary.csv`
 - `reports/transformer_confusion_matrix.csv`
 - `reports/transformer_false_positives.csv`
@@ -113,62 +84,21 @@ runtime 기준 모델은 `distilbert-base-multilingual-cased`이며, 기본 chec
 - `reports/transformer_korean_obfuscation_results.csv`
 - `reports/transformer_experiment_report.md`
 
-GPU 환경에서 한국어 공개 guardrail 데이터까지 포함한 20 epoch 학습을 실행하려면 다음 순서로 진행합니다.
-
-```powershell
-.venv\Scripts\python -m src.data.build_transformer_dataset --output-dir data/processed/transformer_multi_source_korean_20ep --max-korean-safe-per-split 50000
-.venv\Scripts\python -m src.training.train_transformer --config configs/experiments/transformer_korean_gpu_20ep.yaml
-```
-
-`configs/experiments/transformer_korean_gpu_20ep.yaml`는 `training.require_cuda: true`로 설정되어 있어 CUDA GPU가 없으면 CPU로 fallback하지 않고 중단합니다.
-
 ## Evaluate
 
 ```powershell
-.venv\Scripts\python -m src.data.build_korean_obfuscation --input data/samples/prompt_injection_samples.csv --output data/processed/korean_obfuscation.csv
-.venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode rule --config configs/runtime/baseline.yaml
-.venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode ml --config configs/runtime/ml.yaml
-.venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode transformer --config configs/runtime/transformer.yaml
-.venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode full --config configs/runtime/baseline.yaml
-.venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode full --config configs/runtime/ml.yaml
+.venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode rule --config configs/baseline.yaml
+.venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode ml --config configs/ml.yaml
+.venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode transformer --config configs/transformer.yaml
+.venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode full --config configs/baseline.yaml
+.venv\Scripts\python -m src.evaluation.evaluate_pipeline --mode full --config configs/ml.yaml
 ```
 
-`rule`과 `configs/runtime/baseline.yaml` 기반 `full` 평가는 학습된 모델 없이 실행할 수 있습니다. `ml`과 `configs/runtime/ml.yaml` 기반 `full` 평가는 `models/tfidf_logistic_regression.joblib`이 필요합니다. `transformer` 평가는 `models/distilbert-multilingual-prompt-injection-korean-20ep/`이 필요합니다.
-
-`configs/runtime/ml.yaml`은 threshold sweep을 활성화해 `reports/ml_threshold_sweep.csv`를 생성합니다. 현재 ML 계층은 Recall/FNR 보조 신호로 유용하지만 FPR이 높을 수 있으므로, 운영 차단 판단은 rule+transformer와 risk policy를 우선합니다.
-
-평가 산출물은 모드별로 다음 파일을 저장합니다.
-
-- `{mode}_metrics_summary.csv`
-- `{mode}_confusion_matrix.csv`
-- `{mode}_attack_type_metrics.csv`
-- `{mode}_false_positives.csv`
-- `{mode}_false_negatives.csv`
-- `{mode}_korean_obfuscation_results.csv`
+`rule`과 `configs/baseline.yaml` 기반 `full` 평가는 학습된 모델 없이 실행할 수 있습니다. `ml`과 `configs/ml.yaml` 기반 `full` 평가는 `models/tfidf_logistic_regression.joblib`이 필요합니다. `transformer` 평가는 `models/xlm-roberta-prompt-injection/`이 필요합니다.
 
 ## Run API
 
 ```powershell
-.venv\Scripts\uvicorn src.api.main:app --reload
-```
-
-다른 runtime config로 API를 실행할 때는 `PIPELINE_CONFIG`를 지정합니다.
-
-```powershell
-$env:PIPELINE_CONFIG="configs/runtime/ml.yaml"
-.venv\Scripts\uvicorn src.api.main:app --reload
-```
-
-시연용 웹 UI는 API 서버 실행 후 다음 주소에서 사용할 수 있습니다.
-
-```text
-http://127.0.0.1:8000/
-```
-
-발표 시연에서는 Transformer 계층까지 포함되도록 다음 설정을 권장합니다.
-
-```powershell
-$env:PIPELINE_CONFIG="configs/runtime/transformer.yaml"
 .venv\Scripts\uvicorn src.api.main:app --reload
 ```
 
