@@ -13,6 +13,7 @@ from sklearn.pipeline import Pipeline
 
 from src.data.load_datasets import load_csv_datasets
 from src.evaluation.metrics import compute_binary_metrics, write_confusion_matrix, write_dict_csv
+from src.evaluation.writers import write_attack_type_metrics
 from src.pipeline.normalizer import InputNormalizer
 from src.utils.seed import set_seed
 
@@ -41,18 +42,30 @@ def train(config_path: str | Path = "configs/runtime/ml.yaml") -> dict[str, Any]
         data_config["attack_type_column"],
     )
 
-    eval_paths = _optional_config_paths(data_config, "eval_paths", "eval_path", "test_path")
-    if eval_paths:
-        eval_dataset = load_csv_datasets(
-            eval_paths,
+    dev_paths = _optional_config_paths(data_config, "dev_paths", "dev_path")
+    test_paths = _optional_config_paths(data_config, "eval_paths", "eval_path", "test_path", "test_paths")
+    if dev_paths or test_paths:
+        calibration_paths = dev_paths or test_paths
+        test_paths = test_paths or calibration_paths
+        dev_dataset = load_csv_datasets(
+            calibration_paths,
+            data_config["text_column"],
+            data_config["label_column"],
+            data_config["attack_type_column"],
+        )
+        test_dataset = load_csv_datasets(
+            test_paths,
             data_config["text_column"],
             data_config["label_column"],
             data_config["attack_type_column"],
         )
         train_texts = _normalize_texts(train_dataset.texts, normalizer)
-        test_texts = _normalize_texts(eval_dataset.texts, normalizer)
+        dev_texts = _normalize_texts(dev_dataset.texts, normalizer)
+        test_texts = _normalize_texts(test_dataset.texts, normalizer)
         y_train = train_dataset.labels
-        y_test = eval_dataset.labels
+        y_dev = dev_dataset.labels
+        y_test = test_dataset.labels
+        test_attack_types = test_dataset.attack_types
     else:
         indices = list(range(len(train_dataset.texts)))
         train_idx, test_idx = train_test_split(
@@ -64,8 +77,11 @@ def train(config_path: str | Path = "configs/runtime/ml.yaml") -> dict[str, Any]
 
         train_texts = _normalize_texts([train_dataset.texts[index] for index in train_idx], normalizer)
         test_texts = _normalize_texts([train_dataset.texts[index] for index in test_idx], normalizer)
+        dev_texts = test_texts
         y_train = [train_dataset.labels[index] for index in train_idx]
         y_test = [train_dataset.labels[index] for index in test_idx]
+        y_dev = y_test
+        test_attack_types = [train_dataset.attack_types[index] for index in test_idx]
 
     pipeline = Pipeline(
         steps=[
@@ -74,7 +90,7 @@ def train(config_path: str | Path = "configs/runtime/ml.yaml") -> dict[str, Any]
                 TfidfVectorizer(
                     max_features=int(model_config["max_features"]),
                     ngram_range=tuple(model_config["ngram_range"]),
-                    analyzer="char_wb",
+                    analyzer=model_config.get("analyzer", "char_wb"),
                 ),
             ),
             (
@@ -89,13 +105,14 @@ def train(config_path: str | Path = "configs/runtime/ml.yaml") -> dict[str, Any]
     )
     pipeline.fit(train_texts, y_train)
 
-    probabilities = pipeline.predict_proba(test_texts)[:, 1]
-    threshold_rows = _threshold_sweep(y_test, probabilities, model_config.get("calibration", {}))
+    dev_probabilities = pipeline.predict_proba(dev_texts)[:, 1]
+    threshold_rows = _threshold_sweep(y_dev, dev_probabilities, model_config.get("calibration", {}))
     threshold = _select_threshold(
         threshold_rows,
         float(model_config["threshold"]),
         model_config.get("calibration", {}),
     )
+    probabilities = pipeline.predict_proba(test_texts)[:, 1]
     predictions = [1 if probability >= threshold else 0 for probability in probabilities]
     metrics = compute_binary_metrics(y_test, predictions)
 
@@ -116,13 +133,17 @@ def train(config_path: str | Path = "configs/runtime/ml.yaml") -> dict[str, Any]
     if threshold_rows:
         write_dict_csv(report_dir / "ml_threshold_sweep.csv", threshold_rows)
     write_confusion_matrix(report_dir / "confusion_matrix.csv", metrics)
+    write_attack_type_metrics(report_dir, "ml", y_test, test_attack_types, predictions)
 
     error_rows = []
-    for text, actual, predicted, probability in zip(test_texts, y_test, predictions, probabilities):
+    for text, actual, predicted, probability, attack_type in zip(
+        test_texts, y_test, predictions, probabilities, test_attack_types
+    ):
         if actual != predicted:
             error_rows.append(
                 {
                     "text": text,
+                    "attack_type": attack_type,
                     "actual": actual,
                     "predicted": predicted,
                     "score": round(float(probability), 4),
@@ -136,12 +157,15 @@ def train(config_path: str | Path = "configs/runtime/ml.yaml") -> dict[str, Any]
         [
             {
                 "text": text,
+                "attack_type": attack_type,
                 "actual": actual,
                 "predicted": predicted,
                 "score": round(float(probability), 4),
             }
-            for text, actual, predicted, probability in zip(test_texts, y_test, predictions, probabilities)
-            if "ㅅ" in text or "  " in text or "이 전" in text
+            for text, actual, predicted, probability, attack_type in zip(
+                test_texts, y_test, predictions, probabilities, test_attack_types
+            )
+            if _is_korean_obfuscation_case(text, attack_type)
         ],
     )
     write_report(
@@ -150,8 +174,10 @@ def train(config_path: str | Path = "configs/runtime/ml.yaml") -> dict[str, Any]
         metrics_row,
         model_path,
         train_path=", ".join(train_paths),
-        eval_path=", ".join(eval_paths) if eval_paths else f"random {data_config['test_size']} split from train_path",
+        eval_path=", ".join(test_paths) if test_paths else f"random {data_config['test_size']} split from train_path",
+        calibration_path=", ".join(dev_paths) if dev_paths else "same as evaluation split",
         train_size=len(train_texts),
+        calibration_size=len(dev_texts),
         eval_size=len(test_texts),
     )
     return {"model_path": str(model_path), "metrics": metrics_row}
@@ -179,6 +205,15 @@ def _optional_config_paths(config: dict[str, Any], *keys: str) -> list[str]:
     return []
 
 
+def _is_korean_obfuscation_case(text: str, attack_type: str) -> bool:
+    return (
+        attack_type in {"OBFUSCATED_KOREAN_ATTACK", "MIXED_LANGUAGE_ATTACK"}
+        or "ㅅ" in text
+        or "  " in text
+        or "이 전" in text
+    )
+
+
 def write_report(
     path: Path,
     model_name: str,
@@ -186,10 +221,15 @@ def write_report(
     model_path: Path,
     train_path: str = "data/samples/prompt_injection_samples.csv",
     eval_path: str = "random split",
+    calibration_path: str = "same as evaluation split",
     train_size: int | None = None,
+    calibration_size: int | None = None,
     eval_size: int | None = None,
 ) -> None:
     train_size_line = f"- Train rows: {train_size}" if train_size is not None else "- Train rows: unknown"
+    calibration_size_line = (
+        f"- Calibration rows: {calibration_size}" if calibration_size is not None else "- Calibration rows: unknown"
+    )
     eval_size_line = f"- Eval rows: {eval_size}" if eval_size is not None else "- Eval rows: unknown"
     content = f"""# Experiment Report
 
@@ -198,8 +238,10 @@ def write_report(
 - Saved checkpoint: `{model_path}`
 - Detector: TF-IDF char n-gram + Logistic Regression
 - Train dataset: `{train_path}`
+- Threshold calibration dataset: `{calibration_path}`
 - Evaluation dataset: `{eval_path}`
 {train_size_line}
+{calibration_size_line}
 {eval_size_line}
 
 ## 성능
@@ -211,18 +253,20 @@ def write_report(
 - FNR: {metrics["fnr"]:.4f}
 
 ## 보안 관점 해석
-Recall과 FNR을 핵심 위험 지표로 본다. 공개 데이터셋 holdout을 사용할 때는 `eval_path`를 기준으로 성능을 해석하고, sample dataset 결과는 smoke/regression 확인으로만 사용한다.
-ML 계층은 단독 차단 판단자가 아니라 rule/transformer/risk policy를 보조하는 경량 신호로 사용한다. Threshold sweep 결과가 있으면 `ml_threshold_sweep.csv`에서 FPR 통제 조건과 Recall 유지 여부를 함께 확인한다.
+Recall과 FNR을 핵심 위험 지표로 본다. Threshold는 calibration split에서 선택하고, 최종 성능은 evaluation split 기준으로 해석한다.
+ML 계층은 단독 차단 판단자가 아니라 rule/transformer/risk policy를 보조하는 경량 신호로 사용한다. Threshold sweep 결과는 `ml_threshold_sweep.csv`에서 FPR 통제 조건과 Recall 유지 여부를 함께 확인한다.
+Attack type별 성능은 `ml_attack_type_metrics.csv`에서 확인한다.
 
 ## 한계점
-- 현재 공개 데이터셋은 영어 중심이므로 한국어 운영 성능을 직접 대표하지 않는다.
-- Public dataset에는 prompt injection, jailbreak, harmful-content safety 요청이 섞여 있어 attack taxonomy 정제가 필요하다.
+- 공개 데이터셋과 한국어 보강 데이터가 섞여 있으므로 실제 운영 분포를 직접 대표하지 않는다.
+- Public dataset에는 prompt injection, jailbreak, harmful-content safety 요청이 섞여 있어 attack taxonomy 정제가 계속 필요하다.
+- Hard negative 보안 교육 문장은 별도 오탐 분석 대상으로 유지해야 한다.
 - Transformer 문맥 탐지 계층과 한국어 번역/우회형 holdout 평가는 별도로 수행해야 한다.
 
 ## 개선 방향
-- 한국어 번역/우회형 데이터 증강
-- threshold sweep으로 FNR 우선 운영점 선택
-- attack-type별 recall/FNR 리포트 추가
+- 한국어 hard negative 추가 보강
+- JAILBREAK, TOOL_MISUSE 계열 미탐 사례 보강
+- ML positive를 단독 BLOCK이 아닌 WARN/REVIEW 보조 신호로 운영
 """
     path.write_text(content, encoding="utf-8")
 
