@@ -51,6 +51,20 @@ User Input
   -> ALLOW / WARN / REWRITE / BLOCK
 ```
 
+계층별 역할은 다음과 같습니다. 각 계층은 독립적인 판단 결과와 근거를 남기고, 마지막 Risk Policy가 이를 결합해 최종 대응을 결정합니다.
+
+| 계층 | 역할 |
+| --- | --- |
+| Input Normalization | 한글 자모 분리, 반복 공백, 특수문자, 대소문자, 불필요한 구두점 같은 입력 변형을 정리해 이후 탐지 계층이 같은 기준으로 판단하도록 만듭니다. |
+| Rule-based Detection | 알려진 프롬프트 인젝션 패턴, 시스템 프롬프트 탈취 문구, 지시 무시 표현처럼 명확한 공격 신호를 빠르게 탐지하고 설명 가능한 근거를 제공합니다. |
+| Classical ML Detection | TF-IDF와 Logistic Regression 기반 경량 모델로 규칙만으로 포착하기 어려운 통계적 패턴을 보조 탐지합니다. 현재는 단독 차단보다 보조 신호로 활용하는 계층입니다. |
+| Transformer Detection | 다국어 Transformer 모델로 문맥형 공격, 우회 표현, 한국어 변형 입력을 탐지합니다. 시연과 파일럿에서 핵심 탐지 신호로 사용됩니다. |
+| Risk Signals | 규칙, ML, Transformer, 의미 분석 결과를 위험 신호 단위로 정리하고 공격 유형, 근거, 점수 계산에 필요한 중간 신호를 구성합니다. |
+| Intent-action Analyzer | 사용자가 요청한 의도와 실제 요구 행동을 분석해 내부 지시 공개, 보호 컨텍스트 열람, 도구 악용 같은 위험 행동을 식별합니다. |
+| Instruction Hierarchy Guard | 사용자 입력이 system/developer/tool 등 상위 지시 계층을 무시하거나 덮어쓰려는지 확인해 권한 경계 위반을 탐지합니다. |
+| Canary Guard | 보호된 컨텍스트가 외부로 노출되는 상황을 가정한 canary marker 반응을 확인해 프롬프트 유출 가능성을 보조 판단합니다. |
+| Risk Policy | 모든 계층의 결과를 종합해 `risk_score`, `risk_level`, `recommended_action`을 산출하고 `ALLOW`, `WARN`, `REWRITE`, `BLOCK` 중 하나의 대응으로 매핑합니다. |
+
 주요 출력은 다음 필드를 포함합니다.
 
 - `is_injection`
