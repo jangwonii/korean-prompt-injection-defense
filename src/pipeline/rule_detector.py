@@ -27,26 +27,68 @@ HARD_NEGATIVE_PATTERNS = [
     r"무엇인지\s*설명",
     r"개념.*정리",
     r"보안\s*수업",
+    r"보안\s*교육",
     r"위험성.*(설명|분석|알려)",
     r"왜\s*위험한지",
+    r"위험한\s*이유",
+    r"탐지.*방법",
+    r"탐지\s*규칙",
+    r"테스트\s*데이터.{0,20}찾는\s*방법",
+    r"방어.*방법",
+    r"방어\s*정책",
+    r"구분하는\s*방법",
+    r"안전하게\s*관리",
+    r"관리하는\s*방법",
+    r"요청.*(차단|거절|탐지|검증|분류|막는)",
+    r"(차단|거절|탐지|검증|분류).*요청",
+    r"공개하면\s*안\s*되는\s*이유",
+    r"규칙\s*예시",
+    r"체크리스트",
+    r"제한하는\s*방법",
+    r"방어\s*예시",
+    r"문장.*왜\s*공격인지",
+    r"사용자\s*안내문",
+    r"보호\s*정책",
+    r"보호\s*전략",
+    r"운영\s*정책\s*문서",
+    r"설계\s*원칙",
+    r"권한\s*최소화",
+    r"설계할\s*때\s*주의",
     r"교육",
     r"발표용",
 ]
 
-RULES: list[tuple[str, str, str, str, list[str]]] = [
+RULES: list[tuple[str, str, str, str, list[str], list[str]]] = [
     (
         "ignore_previous_instruction",
         "DIRECT_INJECTION",
         "high",
-        r"(ignore|disregard).{0,20}(previous|prior|above).{0,20}(instruction|command)|이전\s*지시.{0,10}무시|앞의\s*명령.{0,10}무시",
-        ["이전지시를무시", "앞의명령을무시", "ignorepreviousinstructions"],
+        r"(ignore|disregard).{0,20}(previous|prior|above).{0,20}(instruction|command)|이전\s*(지시|지침).{0,10}무시|앞의\s*명령.{0,10}무시|이전\s*(지시|지침).{0,10}(지워|잊어)|시스템\s*지시.{0,10}잊고|(앞에서|이전에|기존에).{0,15}(명령|지시|지침).{0,15}(잊고|잊어)|내\s*말만\s*따라",
+        [
+            "이전지시를무시",
+            "앞의명령을무시",
+            "ignorepreviousinstructions",
+            "이전지침을지우고",
+            "내말만따라",
+            "시스템지시는잊고",
+            "앞에서받은모든명령을잊고",
+        ],
+        [
+            r"(이전지시|이전지침|앞의명령|시스템지시).{0,12}(무시|지워|잊어)",
+            r"ignore.{0,12}(previous|prior|above).{0,12}(instruction|command)",
+        ],
     ),
     (
         "system_prompt_extraction",
         "SYSTEM_PROMPT_EXTRACTION",
         "critical",
-        r"(system\s*prompt|시스템\s*프롬프트).{0,30}(출력|보여|공개|print|show|reveal|알려)",
-        ["시스템프롬프트출력", "시스템프롬프트보여", "systempromptreveal"],
+        r"(system\s*prompt|시스템\s*프롬프트).{0,30}(출력|보여|공개|print|show|reveal|알려)|repeat.{0,20}(words|text).{0,20}above.{0,40}you\s*are\s*chatgpt",
+        ["시스템프롬프트출력", "시스템프롬프트보여", "systempromptreveal", "repeatwordsaboveyouarechatgpt"],
+        [
+            r"시스템프롬프트.{0,12}(출력|출력해|출력해줘|보여|보여줘|공개|공개해|알려|알려줘)",
+            r"systemprompt.{0,12}(print|show|reveal)",
+            r"repeat.{0,12}(words|text).{0,24}above.{0,24}youarechatgpt",
+        ],
     ),
     (
         "developer_message_extraction",
@@ -54,13 +96,21 @@ RULES: list[tuple[str, str, str, str, list[str]]] = [
         "critical",
         r"(developer\s*message|개발자\s*메시지|내부\s*규칙|숨겨진\s*지시).{0,30}(출력|보여|공개|알려|show|reveal)",
         ["개발자메시지보여", "내부규칙알려", "hiddeninstructionreveal"],
+        [
+            r"(개발자메시지|내부규칙|숨겨진지시).{0,12}(출력|출력해|출력해줘|보여|보여줘|공개|공개해|알려|알려줘)",
+            r"(developermessage|hiddeninstruction).{0,12}(show|reveal|print)",
+        ],
     ),
     (
         "policy_bypass",
         "POLICY_BYPASS",
         "high",
-        r"(bypass|우회).{0,20}(policy|정책|제한|필터|가드레일)|제한.{0,10}우회",
-        ["제한우회", "정책우회", "bypasspolicy"],
+        r"(bypass|우회).{0,20}(policy|정책|제한|필터|가드레일)|제한.{0,10}우회|(필터|가드레일).{0,12}우회",
+        ["제한우회", "정책우회", "bypasspolicy", "가드레일을우회"],
+        [
+            r"(정책|제한|필터|가드레일).{0,12}우회",
+            r"bypass.{0,12}(policy|restriction|filter|guardrail)",
+        ],
     ),
     (
         "jailbreak",
@@ -68,20 +118,30 @@ RULES: list[tuple[str, str, str, str, list[str]]] = [
         "high",
         r"jailbreak|탈옥|dan\s*mode|무제한\s*모드",
         ["jailbreak", "탈옥", "danmode"],
+        [r"(jailbreak|탈옥|danmode|무제한모드)"],
     ),
     (
         "role_play_attack",
         "ROLE_PLAY_ATTACK",
         "medium",
-        r"(너는|you\s*are).{0,20}(개발자|관리자|system|admin|root)|역할.{0,10}(변경|바꿔)",
-        ["너는관리자", "youaresystem", "역할변경"],
+        r"(너는|you\s*are).{0,40}(개발자|관리자|system|admin|root)|역할.{0,10}(변경|바꿔)|parallel\s*universe.{0,80}(no\s*content\s*policies|no\s*safety\s*restrictions)",
+        ["너는관리자", "youaresystem", "역할변경", "paralleluniversenocontentpolicies"],
+        [
+            r"(너는|youare).{0,16}(개발자|관리자|system|admin|root)",
+            r"역할.{0,12}(변경|바꿔)",
+            r"paralleluniverse.{0,40}(nocontentpolicies|nosafetyrestrictions)",
+        ],
     ),
     (
         "data_exfiltration",
         "DATA_EXFILTRATION",
         "critical",
-        r"(api\s*key|token|credential|비밀|시크릿|토큰|키).{0,20}(출력|보여|공개|알려|show|reveal)",
-        ["apikey보여", "토큰출력", "credentialreveal"],
+        r"(api\s*key|token|credential|비밀|시크릿|토큰|키).{0,35}(출력|보여|공개|알려|show|reveal|training\s*examples?)|(training\s*examples?).{0,35}(api\s*keys?|token|credential)",
+        ["apikey보여", "토큰출력", "credentialreveal", "trainingexamplesapikeys"],
+        [
+            r"(apikey|token|credential|비밀|시크릿|토큰|키).{0,16}(출력|출력해|출력해줘|보여|보여줘|공개|공개해|알려|알려줘|show|reveal)",
+            r"trainingexamples.{0,16}(apikey|token|credential)",
+        ],
     ),
     (
         "tool_misuse",
@@ -89,6 +149,9 @@ RULES: list[tuple[str, str, str, str, list[str]]] = [
         "high",
         r"(tool|api|file|파일|도구).{0,20}(접근|실행|삭제|읽어|열어|호출)",
         ["파일삭제", "toolcall", "api호출"],
+        [
+            r"(tool|api|file|파일|도구).{0,16}(접근|실행|삭제|읽어|열어|호출|call)",
+        ],
     ),
 ]
 
@@ -102,8 +165,8 @@ class RuleBasedDetector:
         hard_negative = self._is_hard_negative(text)
         matches: list[RuleMatch] = []
 
-        for name, attack_type, risk_hint, pattern, compact_terms in RULES:
-            evidence = self._match_rule(text, compact, pattern, compact_terms)
+        for name, attack_type, risk_hint, pattern, compact_terms, compact_patterns in RULES:
+            evidence = self._match_rule(text, compact, pattern, compact_terms, compact_patterns)
             if not evidence:
                 continue
             if hard_negative and attack_type in {
@@ -111,6 +174,9 @@ class RuleBasedDetector:
                 "JAILBREAK",
                 "POLICY_BYPASS",
                 "SYSTEM_PROMPT_EXTRACTION",
+                "DATA_EXFILTRATION",
+                "TOOL_MISUSE",
+                "ROLE_PLAY_ATTACK",
             }:
                 continue
             matches.append(RuleMatch(name, attack_type, evidence, risk_hint))
@@ -143,6 +209,7 @@ class RuleBasedDetector:
         compact: str,
         pattern: str,
         compact_terms: list[str],
+        compact_patterns: list[str],
     ) -> str | None:
         match = re.search(pattern, text, flags=re.IGNORECASE)
         if match:
@@ -150,6 +217,10 @@ class RuleBasedDetector:
         for term in compact_terms:
             if term in compact:
                 return term
+        for compact_pattern in compact_patterns:
+            compact_match = re.search(compact_pattern, compact, flags=re.IGNORECASE)
+            if compact_match:
+                return compact_match.group(0)
         return None
 
     def _is_hard_negative(self, text: str) -> bool:

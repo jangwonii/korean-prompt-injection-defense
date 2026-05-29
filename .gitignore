@@ -10,6 +10,13 @@ data/raw/*
 data/interim/*
 data/processed/*
 reports/*
+!reports/.gitkeep
+!reports/*.md
+!reports/development/
+!reports/development/*.md
+!reports/ml_public_verified/
+reports/ml_public_verified/*
+!reports/ml_public_verified/*.md
 models/
 checkpoints/
 !.gitkeep

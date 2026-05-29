@@ -1,3 +1,11 @@
+data:
+  eval_paths:
+    - data/samples/prompt_injection_samples.csv
+    - data/samples/local_eval_extension.csv
+  text_column: text
+  label_column: label
+  attack_type_column: attack_type
+
 thresholds:
   medium: 35
   high: 65
