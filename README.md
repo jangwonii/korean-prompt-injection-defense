@@ -435,3 +435,7 @@ tests/
 - API key, token, credential 수집 코드
 - 실서비스 우회 목적의 jailbreak prompt 모음 생성
 
+## Demo UI
+<img width="1091" height="728" alt="image" src="https://github.com/user-attachments/assets/d7a031ad-d268-4db2-b1e5-637974d81852" />
+<img width="1063" height="627" alt="image" src="https://github.com/user-attachments/assets/74204fdf-441f-4619-a9ab-084653319c6a" />
+
