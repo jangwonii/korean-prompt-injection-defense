@@ -36,6 +36,7 @@ def test_train_ml_writes_model_and_reports(tmp_path: Path) -> None:
             },
         },
         "reports": {"output_dir": str(tmp_path / "reports")},
+        "early_exit": {"enabled": False},
     }
     config_path = tmp_path / "ml.yaml"
     config_path.write_text(yaml.safe_dump(config), encoding="utf-8")

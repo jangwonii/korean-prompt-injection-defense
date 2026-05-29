@@ -33,6 +33,19 @@ signal_weights:
 ml_policy:
   positive_min_score: 35
 
+early_exit:
+  enabled: true
+  block_levels: [CRITICAL]
+  block_actions: [BLOCK]
+  block_sources: [rule_based, hierarchy_guard, canary_guard]
+  allow_level: LOW
+  allow_action: ALLOW
+  allow_security_education: true
+  allow_max_obfuscation_score: 20
+  allow_max_instruction_override_score: 0
+  allow_max_mixed_language_score: 25
+  allow_max_sensitive_target_score: 0
+
 semantic_weights:
   intent_score: 0.75
   hierarchy_score: 0.85
